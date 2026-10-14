@@ -3,238 +3,86 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitHub JSON CRUD</title>
+<title>School Lost &amp; Found</title>
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--mute:#667085;--line:#e1e4e8;--acc:#0b6bcb;--danger:#c62828;--ok:#1a7f37}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171d24;--ink:#e8ecf1;--mute:#98a2b3;--line:#2a323c;--acc:#5aa9ff;--danger:#ff7b72;--ok:#56d364}}
+:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--mute:#667085;--line:#e1e4e8;--acc:#0b6bcb}
+@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171d24;--ink:#e8ecf1;--mute:#98a2b3;--line:#2a323c;--acc:#5aa9ff}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif}
-main{max-width:760px;margin:0 auto;padding:16px}
-h1{font-size:1.3rem;margin:8px 0 12px}
-section,.item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
-label{display:block;font-size:.85rem;color:var(--mute);margin:8px 0 3px}
-input,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
-button{padding:9px 14px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
-button.p{background:var(--acc);border-color:var(--acc);color:#fff}
-button.d{color:var(--danger)}
-button:disabled{opacity:.5}
-button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-@media (max-width:520px){.grid{grid-template-columns:1fr}}
-.item{display:flex;gap:12px}
-.item img{width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none;background:var(--line)}
-.item h3{margin:0 0 2px;font-size:1rem}
-.item p{margin:0 0 8px;color:var(--mute);font-size:.92rem;word-break:break-word}
-#status{position:sticky;top:0;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);font-size:.9rem}
-.dirty{color:var(--danger)}.clean{color:var(--ok)}
-details summary{cursor:pointer;font-weight:600}
-small{color:var(--mute)}
+main{max-width:900px;margin:0 auto;padding:16px}
+h1{font-size:1.4rem;margin:8px 0 4px}
+.sub{color:var(--mute);margin:0 0 14px}
+input{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:14px}
+input:focus-visible{outline:2px solid var(--acc)}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--line);cursor:zoom-in}
+.card div{padding:10px 12px}
+.card h3{margin:0 0 4px;font-size:1rem}
+.card p{margin:0;color:var(--mute);font-size:.9rem;word-break:break-word}
+.card small{color:var(--mute);display:block;margin-top:6px}
+#msg{color:var(--mute)}
+#zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
+#zoom img{max-width:100%;max-height:100%;border-radius:8px}
 </style>
 </head>
 <body>
 <main>
-<h1>Items (stored in GitHub JSON)</h1>
-<div id="status">Not connected.</div>
-
-<section>
-<details id="cfg">
-<summary>Settings</summary>
-<div class="grid">
-<div><label>GitHub owner</label><input id="owner" placeholder="your-username"></div>
-<div><label>Repository</label><input id="repo" placeholder="my-repo"></div>
-<div><label>Data branch</label><input id="branch" value="data"></div>
-<div><label>File path</label><input id="path" value="data/items.json"></div>
-<div><label>Cloudinary cloud name</label><input id="cloud" placeholder="optional"></div>
-<div><label>Cloudinary unsigned preset</label><input id="preset" placeholder="optional"></div>
-</div>
-<label>GitHub token (fine-grained, Contents: read &amp; write, this repo only)</label>
-<input id="token" type="password" placeholder="github_pat_...">
-<div class="row" style="margin-top:10px">
-<button class="p" id="connect">Save settings &amp; load</button>
-</div>
-<small>Settings and token stay in this browser (localStorage). Use only on your own device.</small>
-</details>
-</section>
-
-<section>
-<strong id="formTitle">Add item</strong>
-<input type="hidden" id="editId">
-<label>Title</label><input id="title">
-<label>Note</label><textarea id="note" rows="2"></textarea>
-<label>Image: upload a file or paste a link</label>
-<input type="file" id="file" accept="image/*">
-<input id="imgUrl" placeholder="https://... (Google, Imgur, any direct image link)" style="margin-top:6px">
-<div class="row" style="margin-top:10px">
-<button class="p" id="saveItem">Add</button>
-<button id="cancel" hidden>Cancel edit</button>
-<span id="upmsg"><small></small></span>
-</div>
-</section>
-
-<div class="row" style="margin-bottom:10px">
-<button class="p" id="commit" disabled>Save changes to GitHub</button>
-<button id="reload">Reload</button>
-</div>
-<div id="list"></div>
+<h1>School Lost &amp; Found</h1>
+<p class="sub">Found something that looks like yours? Visit the office and describe it to claim it.</p>
+<input id="q" type="search" placeholder="Search items (e.g. umbrella, bottle, blue)" aria-label="Search items">
+<p id="msg">Loading...</p>
+<div id="grid"></div>
 </main>
+<div id="zoom"><img alt=""></div>
 
 <script>
+// Auto-detects owner/repo when hosted on GitHub Pages (owner.github.io/repo/).
+// Otherwise fill these in by hand.
+let OWNER = '', REPO = '';
+const BRANCH = 'data', FILE = 'data/items.json';
+
+if (!OWNER && location.hostname.endsWith('.github.io')){
+  OWNER = location.hostname.split('.')[0];
+  REPO = location.pathname.split('/')[1];
+}
+const URL_JSON = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${FILE}`;
+
 const $ = id => document.getElementById(id);
-const FIELDS = ['owner','repo','branch','path','cloud','preset','token'];
-let items = [], sha = null, dirty = false;
-
-// ---------- settings ----------
-function loadCfg(){
-  const c = JSON.parse(localStorage.getItem('cfg') || '{}');
-  FIELDS.forEach(f => { if (c[f]) $(f).value = c[f]; });
-}
-function cfg(){ const c = {}; FIELDS.forEach(f => c[f] = $(f).value.trim()); return c; }
-function saveCfg(){ localStorage.setItem('cfg', JSON.stringify(cfg())); }
-
-function status(msg, cls){ $('status').innerHTML = msg; $('status').className = cls || ''; }
-function setDirty(v){
-  dirty = v; $('commit').disabled = !v;
-  status(v ? '<span class="dirty">Unsaved changes. Press "Save changes to GitHub".</span>'
-           : '<span class="clean">Up to date with GitHub.</span>');
-}
-
-// ---------- GitHub API ----------
-const b64enc = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
-const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,'')), c => c.charCodeAt(0)));
-
-function api(path, opt = {}){
-  const c = cfg();
-  return fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}${path}`, {
-    ...opt,
-    headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json', ...(opt.headers || {}) }
-  });
-}
-
-async function ensureBranch(){
-  // create the data branch from the default branch if it does not exist
-  const c = cfg(), h = { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json' };
-  const base = `https://api.github.com/repos/${c.owner}/${c.repo}`;
-  const r = await fetch(`${base}/branches/${c.branch}`, { headers: h });
-  if (r.ok) return;
-  const repo = await (await fetch(base, { headers: h })).json();
-  const def = await (await fetch(`${base}/git/ref/heads/${repo.default_branch}`, { headers: h })).json();
-  await fetch(`${base}/git/refs`, { method: 'POST', headers: h,
-    body: JSON.stringify({ ref: `refs/heads/${c.branch}`, sha: def.object.sha }) });
-}
-
-// READ
-async function load(){
-  try{
-    status('Loading...');
-    await ensureBranch();
-    const r = await api(`?ref=${cfg().branch}&t=${Date.now()}`);
-    if (r.status === 404){ items = []; sha = null; render(); setDirty(false); status('No data file yet. Add items, then save.'); return; }
-    if (!r.ok) throw new Error(`GitHub ${r.status}`);
-    const j = await r.json();
-    sha = j.sha;
-    items = JSON.parse(b64dec(j.content) || '[]');
-    render(); setDirty(false);
-  }catch(e){ status(`<span class="dirty">Load failed: ${e.message}</span>`); }
-}
-
-// WRITE (one commit for all pending changes)
-async function commit(){
-  try{
-    $('commit').disabled = true; status('Saving...');
-    const body = { message: `update items (${items.length})`, branch: cfg().branch,
-                   content: b64enc(JSON.stringify(items, null, 2)) };
-    if (sha) body.sha = sha;
-    const r = await api('', { method: 'PUT', body: JSON.stringify(body) });
-    if (r.status === 409 || r.status === 422) throw new Error('Data changed elsewhere. Press Reload, then redo your edit.');
-    if (!r.ok) throw new Error(`GitHub ${r.status}`);
-    sha = (await r.json()).content.sha;
-    setDirty(false);
-  }catch(e){ status(`<span class="dirty">Save failed: ${e.message}</span>`); $('commit').disabled = false; }
-}
-
-// ---------- image upload (stores only a URL) ----------
-async function uploadImage(file){
-  const c = cfg();
-  if (!c.cloud || !c.preset) throw new Error('Add Cloudinary settings, or paste an image link instead.');
-  const fd = new FormData();
-  fd.append('file', file); fd.append('upload_preset', c.preset);
-  const r = await fetch(`https://api.cloudinary.com/v1_1/${c.cloud}/image/upload`, { method: 'POST', body: fd });
-  if (!r.ok) throw new Error('Image upload failed');
-  const j = await r.json();
-  // f_auto,q_auto,w_800 = smaller, faster images
-  return j.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
-}
-
-// ---------- CRUD (in memory, committed in batches) ----------
 const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+let items = [];
 
 function render(){
-  $('list').innerHTML = items.length ? items.map(i => `
-    <div class="item">
-      ${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy">` : '<img alt="">'}
+  const q = $('q').value.trim().toLowerCase();
+  const list = items.filter(i => !q || (i.title + ' ' + (i.note || '')).toLowerCase().includes(q));
+  $('msg').textContent = list.length ? '' : (items.length ? 'No matches.' : 'No items posted yet.');
+  $('grid').innerHTML = list.map(i => `
+    <div class="card">
+      ${i.image ? `<img src="${esc(i.image)}" alt="${esc(i.title)}" loading="lazy">` : ''}
       <div>
         <h3>${esc(i.title)}</h3>
         <p>${esc(i.note)}</p>
-        <div class="row">
-          <button data-edit="${i.id}">Edit</button>
-          <button class="d" data-del="${i.id}">Delete</button>
-        </div>
+        <small>Posted ${new Date(i.created || i.updated).toLocaleDateString()}</small>
       </div>
-    </div>`).join('') : '<small>No items yet.</small>';
+    </div>`).join('');
 }
 
-function resetForm(){
-  ['editId','title','note','imgUrl','file'].forEach(f => $(f).value = '');
-  $('formTitle').textContent = 'Add item'; $('saveItem').textContent = 'Add'; $('cancel').hidden = true;
-  $('upmsg').firstChild.textContent = '';
-}
-
-async function saveItem(){
-  const title = $('title').value.trim();
-  if (!title) return alert('Title is required.');
-  $('saveItem').disabled = true;
+async function init(){
   try{
-    let image = $('imgUrl').value.trim();
-    const f = $('file').files[0];
-    if (f){ $('upmsg').firstChild.textContent = 'Uploading image...'; image = await uploadImage(f); }
-    const id = $('editId').value;
-    if (id){                                                  // UPDATE
-      const it = items.find(x => x.id === id);
-      Object.assign(it, { title, note: $('note').value.trim(), updated: new Date().toISOString() });
-      if (image) it.image = image;
-    } else {                                                  // CREATE
-      items.unshift({ id: crypto.randomUUID(), title, note: $('note').value.trim(), image,
-                      created: new Date().toISOString() });
-    }
-    resetForm(); render(); setDirty(true);
-  }catch(e){ alert(e.message); }
-  $('saveItem').disabled = false;
+    // Cached copy is used first, so this stays fast and light.
+    const r = await fetch(URL_JSON);
+    if (!r.ok) throw new Error(r.status);
+    items = await r.json();
+    render();
+  }catch(e){ $('msg').textContent = 'Could not load items. Please try again later.'; }
 }
 
-$('list').addEventListener('click', e => {
-  const ed = e.target.dataset.edit, del = e.target.dataset.del;
-  if (ed){                                                     // start UPDATE
-    const it = items.find(x => x.id === ed);
-    $('editId').value = it.id; $('title').value = it.title; $('note').value = it.note || '';
-    $('imgUrl').value = it.image || '';
-    $('formTitle').textContent = 'Edit item'; $('saveItem').textContent = 'Update'; $('cancel').hidden = false;
-    scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  if (del && confirm('Delete this item?')){                    // DELETE
-    items = items.filter(x => x.id !== del); render(); setDirty(true);
-  }
+$('q').addEventListener('input', render);
+$('grid').addEventListener('click', e => {
+  if (e.target.tagName === 'IMG'){ $('zoom').firstElementChild.src = e.target.src; $('zoom').style.display = 'flex'; }
 });
-
-$('saveItem').onclick = saveItem;
-$('cancel').onclick = resetForm;
-$('commit').onclick = commit;
-$('reload').onclick = () => { if (!dirty || confirm('Discard unsaved changes?')) load(); };
-$('connect').onclick = () => { saveCfg(); $('cfg').open = false; load(); };
-window.addEventListener('beforeunload', e => { if (dirty){ e.preventDefault(); e.returnValue = ''; } });
-
-loadCfg();
-if (cfg().owner && cfg().repo && cfg().token) load(); else $('cfg').open = true;
+$('zoom').onclick = () => $('zoom').style.display = 'none';
+init();
 </script>
 </body>
 </html>
