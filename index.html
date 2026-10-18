@@ -2,87 +2,600 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>School Lost &amp; Found</title>
-<style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--mute:#667085;--line:#e1e4e8;--acc:#0b6bcb}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171d24;--ink:#e8ecf1;--mute:#98a2b3;--line:#2a323c;--acc:#5aa9ff}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif}
-main{max-width:900px;margin:0 auto;padding:16px}
-h1{font-size:1.4rem;margin:8px 0 4px}
-.sub{color:var(--mute);margin:0 0 14px}
-input{width:100%;padding:11px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;margin-bottom:14px}
-input:focus-visible{outline:2px solid var(--acc)}
-#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-.card img{width:100%;aspect-ratio:4/3;object-fit:cover;display:block;background:var(--line);cursor:zoom-in}
-.card div{padding:10px 12px}
-.card h3{margin:0 0 4px;font-size:1rem}
-.card p{margin:0;color:var(--mute);font-size:.9rem;word-break:break-word}
-.card small{color:var(--mute);display:block;margin-top:6px}
-#msg{color:var(--mute)}
-#zoom{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;align-items:center;justify-content:center;padding:16px;cursor:zoom-out}
-#zoom img{max-width:100%;max-height:100%;border-radius:8px}
-</style>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Hanap QCU · Lost & Found and Campus Finder</title>
+<meta name="description" content="Quezon City University lost and found — see found items on the campus map, report what you lost or found, and find rooms and offices.">
+<meta name="theme-color" content="#050b18">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff6b1a'/><stop offset='1' stop-color='%23ffc24a'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(%23g)'/><circle cx='14' cy='14' r='6' fill='none' stroke='%23050b18' stroke-width='3'/><path d='M18.5 18.5 24 24' stroke='%23050b18' stroke-width='3' stroke-linecap='round'/></svg>">
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="preconnect" href="https://raw.githubusercontent.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="assets/app.css">
 </head>
-<body>
-<main>
-<h1>School Lost &amp; Found</h1>
-<p class="sub">Found something that looks like yours? Visit the office and describe it to claim it.</p>
-<input id="q" type="search" placeholder="Search items (e.g. umbrella, bottle, blue)" aria-label="Search items">
-<p id="msg">Loading...</p>
-<div id="grid"></div>
-</main>
-<div id="zoom"><img alt=""></div>
+<body class="v-map">
 
-<script>
-// Auto-detects owner/repo when hosted on GitHub Pages (owner.github.io/repo/).
-// Otherwise fill these in by hand.
-let OWNER = '', REPO = '';
-const BRANCH = 'data', FILE = 'data/items.json';
+<header class="top">
+  <a class="brand" href="#" onclick="App.home();return false">
+    <div class="brand-mark">QCU</div>
+    <div><div class="brand-k" id="kicker">QCU · Lost &amp; Found</div><div class="brand-t" id="siteName">Hanap QCU</div></div>
+  </a>
+  <div class="tdiv hide-m"></div>
+  <div class="gsearch"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search items, rooms, offices — e.g. umbrella, registrar" autocomplete="off" aria-label="Search"></div>
+  <div class="sp"></div>
+  <a class="demo-tag hidden" id="demoTag" href="index.html" title="These items and places are made up — click to see the real site">Sample data</a>
+  <button class="tb-btn hide-m" id="tHelp"></button>
+  <button class="tb-btn primary hide-m" id="tReport"></button>
+</header>
 
-if (!OWNER && location.hostname.endsWith('.github.io')){
-  OWNER = location.hostname.split('.')[0];
-  REPO = location.pathname.split('/')[1];
-}
-const URL_JSON = `https://raw.githubusercontent.com/${OWNER}/${REPO}/${BRANCH}/${FILE}`;
-
-const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-let items = [];
-
-function render(){
-  const q = $('q').value.trim().toLowerCase();
-  const list = items.filter(i => !q || (i.title + ' ' + (i.note || '')).toLowerCase().includes(q));
-  $('msg').textContent = list.length ? '' : (items.length ? 'No matches.' : 'No items posted yet.');
-  $('grid').innerHTML = list.map(i => `
-    <div class="card">
-      ${i.image ? `<img src="${esc(i.image)}" alt="${esc(i.title)}" loading="lazy">` : ''}
-      <div>
-        <h3>${esc(i.title)}</h3>
-        <p>${esc(i.note)}</p>
-        <small>Posted ${new Date(i.created || i.updated).toLocaleDateString()}</small>
+<div class="app">
+  <aside class="panel" id="panel">
+    <div class="tabs" id="tabs"></div>
+    <div class="ptools" id="toolsItems">
+      <div class="stories" id="stories"></div>
+      <div class="row">
+        <div class="seg" id="typeSeg"><button data-t="" class="on">All</button><button data-t="found">Found</button><button data-t="lost">Lost</button></div>
+        <label class="toggle" style="margin-left:auto"><input type="checkbox" id="showDone"> Show returned</label>
       </div>
-    </div>`).join('');
-}
+      <div class="stat" id="itemStat"></div>
+    </div>
+    <div class="ptools hidden" id="toolsPlaces">
+      <div class="chips" id="placeChips"></div>
+      <div class="stat">Tap a place to see it on the map. Try “room 305”, “registrar”, “CR”.</div>
+    </div>
+    <div class="ptools hidden" id="toolsMine">
+      <div class="stat">Reports sent from this device. They go live once the Lost &amp; Found desk checks them.</div>
+    </div>
+    <div class="list" id="list"></div>
+  </aside>
 
-async function init(){
-  try{
-    // Cached copy is used first, so this stays fast and light.
-    const r = await fetch(URL_JSON);
-    if (!r.ok) throw new Error(r.status);
-    items = await r.json();
-    render();
-  }catch(e){ $('msg').textContent = 'Could not load items. Please try again later.'; }
-}
+  <section class="mapwrap">
+    <div id="map"></div>
+    <div class="mctl tl"><div class="vsw" id="viewSw"></div></div>
+    <div class="mctl tr"><div class="floors" id="floors"></div></div>
+    <div class="mctl br" id="mapBtns"></div>
+    <div class="legend"><span><i style="background:var(--found)"></i>Found</span><span><i style="background:var(--lost)"></i>Lost</span><span><i style="background:linear-gradient(135deg,var(--flame),var(--gold))"></i>Desk</span><span class="saver" id="saver"></span></div>
+  </section>
 
-$('q').addEventListener('input', render);
-$('grid').addEventListener('click', e => {
-  if (e.target.tagName === 'IMG'){ $('zoom').firstElementChild.src = e.target.src; $('zoom').style.display = 'flex'; }
-});
-$('zoom').onclick = () => $('zoom').style.display = 'none';
-init();
+  <aside class="drawer" id="drawer">
+    <div class="dhead" id="dHead"></div>
+    <div class="dbody" id="dBody"></div>
+  </aside>
+</div>
+
+<nav class="bnav" id="bnav"></nav>
+
+<div class="modal-bg" id="mReport">
+  <div class="modal">
+    <div class="mhead"><div class="tt"><div class="k" id="rKick">Report · step 1 of 3</div><b id="rTitle">Report an item</b></div><button class="iconbtn" id="rClose" aria-label="Close"></button></div>
+    <div class="steps" id="rSteps"><span></span><span></span><span></span></div>
+    <div class="mbody" id="rBody"></div>
+    <div class="mfoot" id="rFoot"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="mHelp">
+  <div class="modal" style="max-width:540px">
+    <div class="mhead"><div class="tt"><div class="k">Guide</div><b>How Hanap QCU works</b></div><button class="iconbtn" id="hClose" aria-label="Close"></button></div>
+    <div class="mbody" id="helpBody"></div>
+  </div>
+</div>
+
+<div class="zoomer" id="zoomer" onclick="this.classList.remove('on')"><img alt=""></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="assets/core.js"></script>
+<script>
+'use strict';
+const { $, $$, esc, icon, ITEM_CATS, PLACE_CATS, STATUS, floorLabel, ago, toast } = LF;
+
+const App = {
+  db: null, map: null, m: null, tab: 'items', type: '', cat: '', pcat: '', floor: '', showDone: false, q: '',
+  sel: null, layers: {}, mine: JSON.parse(localStorage.getItem('hanap.mine') || '[]'),
+
+  // ───────────────────────── boot ─────────────────────────
+  async init() {
+    this.chrome();
+    const c = LF.cached();
+    if (c) this.setDb(c.db);
+    this.m = await LF.createMap($('#map'), {
+      view: localStorage.getItem('hanap.view') || 'satellite', places: this.db?.places || [],
+      onBuilding: (f, ll) => this.openBuilding(f, ll), center: this.db?.config.center, zoom: this.db?.config.zoom,
+    });
+    this.map = this.m.map;
+    this.layers.places = L.layerGroup().addTo(this.map);
+    this.layers.items = L.layerGroup().addTo(this.map);
+    let lastZ = this.map.getZoom();
+    this.map.on('zoomend', () => { const z = this.map.getZoom(); if ((z < 19) !== (lastZ < 19)) this.renderMarkers(); lastZ = z; });
+    $$('#viewSw button').forEach(b => b.classList.toggle('on', b.dataset.v === this.map._lfView));
+    this.bind();
+    if (this.db) this.renderAll();
+    $('#demoTag').classList.toggle('hidden', !LF.DEMO);
+    try {
+      const { db, offline } = await LF.loadDb();
+      this.setDb(db); this.renderAll();
+      if (offline) toast('Offline — showing the last saved list', 'warn');
+    } catch (e) {
+      if (!this.db) $('#list').innerHTML = `<div class="empty">${icon('alert')}${esc(e.message)}<br>Check your connection and refresh.</div>`;
+    }
+    this.route();
+    window.addEventListener('hashchange', () => this.route());
+  },
+  chrome() {
+    $('#tHelp').innerHTML = `${icon('help')} How it works`;
+    $('#tReport').innerHTML = `${icon('plus')} Report an item`;
+    $('#tabs').innerHTML = [['items', 'grid', 'Lost & Found', 'nItems'], ['places', 'building', 'Campus', 'nPlaces'], ['mine', 'receipt', 'My reports', 'nMine']]
+      .map(([t, ic, n, id]) => `<button class="tab ${t === 'items' ? 'on' : ''}" data-tab="${t}">${icon(ic)}${n} <span class="n" id="${id}">0</span></button>`).join('');
+    $('#viewSw').innerHTML = [['satellite', 'globe', 'Satellite'], ['street', 'map', 'Street'], ['blueprint', 'blueprint', 'Blueprint']]
+      .map(([v, ic, n]) => `<button data-v="${v}" title="${v === 'blueprint' ? 'Draws the campus without map images — uses almost no data' : n}">${icon(ic)}<span>${n}</span></button>`).join('');
+    $('#mapBtns').innerHTML = [['plus', 'Zoom in', 'App.map.zoomIn()'], ['minus', 'Zoom out', 'App.map.zoomOut()'], ['home', 'Back to campus', 'App.home()'], ['locate', 'Where am I?', 'LF.locate(App.map)']]
+      .map(([ic, t, fn]) => `<button class="mbtn" title="${t}" onclick="${fn}">${icon(ic)}</button>`).join('');
+    $('#bnav').innerHTML = [['map', 'map', 'Map'], ['list', 'grid', 'Items'], ['report', 'plus', 'Report'], ['places', 'building', 'Campus'], ['help', 'help', 'Help']]
+      .map(([k, ic, n]) => `<button data-nav="${k}" class="${k === 'map' ? 'on' : ''} ${k === 'report' ? 'rep' : ''}">${icon(ic)}${n}</button>`).join('');
+    $('#rClose').innerHTML = icon('x'); $('#hClose').innerHTML = icon('x');
+  },
+  setDb(db) {
+    this.db = db;
+    const c = db.config;
+    $('#siteName').textContent = c.site_name;
+    $('#kicker').textContent = `${c.school.replace(/Quezon City University/i, 'QCU')} · Lost & Found`;
+    document.title = `${c.site_name} · Lost & Found and Campus Finder`;
+    if (this.m) this.m.drawLabels(db.places);
+  },
+  bind() {
+    $('#q').addEventListener('input', e => { this.q = e.target.value; this.renderList(); this.renderMarkers(); });
+    $('#q').addEventListener('keydown', e => { if (e.key === 'Enter') this.searchJump(); });
+    $$('.tab').forEach(b => b.onclick = () => this.setTab(b.dataset.tab));
+    $$('#typeSeg button').forEach(b => b.onclick = () => { this.type = b.dataset.t; $$('#typeSeg button').forEach(x => x.classList.toggle('on', x === b)); this.renderList(); this.renderMarkers(); });
+    $('#showDone').onchange = e => { this.showDone = e.target.checked; this.renderList(); this.renderMarkers(); };
+    $$('#viewSw button').forEach(b => b.onclick = () => {
+      this.m.setView(b.dataset.v); localStorage.setItem('hanap.view', b.dataset.v);
+      $$('#viewSw button').forEach(x => x.classList.toggle('on', x === b)); this.saverNote();
+    });
+    $$('.bnav button').forEach(b => b.onclick = () => this.nav(b.dataset.nav));
+    $('#tHelp').onclick = () => this.openHelp();
+    $('#tReport').onclick = () => this.openReport();
+    $('#rClose').onclick = () => this.closeReport();
+    $('#hClose').onclick = () => $('#mHelp').classList.remove('on');
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') { if ($('#mReport').classList.contains('on')) this.closeReport(); else this.closeDrawer(); }
+      if (e.key === '/' && !/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) { e.preventDefault(); $('#q').focus(); }
+    });
+    document.addEventListener('click', e => {
+      const im = e.target.closest('[data-zoom]');
+      if (!im) return;
+      const z = $('#zoomer img');
+      z.onerror = function () { this.onerror = null; this.src = im.dataset.zoom; };
+      z.src = LF.thumb(im.dataset.zoom, 1400); $('#zoomer').classList.add('on');
+    });
+    this.saverNote();
+  },
+  saverNote() { $('#saver').textContent = this.map._lfView === 'blueprint' ? 'DATA SAVER' : ''; },
+  nav(where) {
+    $$('.bnav button').forEach(b => b.classList.toggle('on', b.dataset.nav === where));
+    if (where === 'report') return this.openReport();
+    if (where === 'help') return this.openHelp();
+    document.body.classList.toggle('v-list', where === 'list' || where === 'places');
+    if (where === 'places') this.setTab('places'); else if (where === 'list') this.setTab(this.tab === 'places' ? 'items' : this.tab);
+    if (where === 'map') setTimeout(() => this.map.invalidateSize(), 260);
+  },
+  isMobile: () => matchMedia('(max-width:860px)').matches,
+  home() { this.closeDrawer(); this.map.flyTo(this.db?.config.center || LF.CAMPUS.center, this.db?.config.zoom || 18); if (this.isMobile()) this.nav('map'); },
+
+  // ───────────────────────── data views ─────────────────────────
+  visibleItems() {
+    return (this.db?.items || []).filter(i => i.status !== 'archived' &&
+      (this.showDone || i.status !== 'returned') && (!this.type || i.type === this.type) &&
+      (!this.cat || i.category === this.cat) && (!this.q || LF.matches(LF.itemText(i), this.q)))
+      .sort((a, b) => (a.status === 'returned') - (b.status === 'returned') || String(b.created || b.date).localeCompare(String(a.created || a.date)));
+  },
+  visiblePlaces() {
+    return (this.db?.places || []).filter(p => (!this.pcat || p.category === this.pcat) && (!this.q || LF.matches(LF.placeText(p), this.q)))
+      .sort((a, b) => (b.category === 'desk') - (a.category === 'desk') || a.name.localeCompare(b.name));
+  },
+  onFloor: x => !App.floor || !x.floor || String(x.floor).toLowerCase() === App.floor.toLowerCase(),
+  fresh: i => Date.now() - new Date(i.created || i.date).getTime() < 48 * 3600e3,
+
+  renderAll() { this.renderChips(); this.renderFloors(); this.renderList(); this.renderMarkers(); },
+  renderChips() {
+    const items = (this.db?.items || []).filter(i => i.status !== 'archived' && i.status !== 'returned');
+    const cats = Object.entries(ITEM_CATS).filter(([k]) => items.some(i => i.category === k));
+    // story rail — a coloured ring means something new in that category in the last 48 h
+    $('#stories').innerHTML = `<button class="story ${!this.cat ? 'on' : ''} ${items.some(this.fresh) ? 'fresh' : ''}" data-c=""><div class="ring"><div class="disc">✨</div></div><span>All</span></button>` +
+      cats.map(([k, [e, n]]) => `<button class="story ${this.cat === k ? 'on' : ''} ${items.some(i => i.category === k && this.fresh(i)) ? 'fresh' : ''}" data-c="${k}" title="${esc(n)}"><div class="ring"><div class="disc">${e}</div></div><span>${esc(n.split(' ')[0])}</span></button>`).join('');
+    $$('#stories .story').forEach(b => b.onclick = () => { this.cat = this.cat === b.dataset.c ? '' : b.dataset.c; this.renderChips(); this.renderList(); this.renderMarkers(); });
+    const pc = Object.entries(PLACE_CATS).filter(([k]) => (this.db?.places || []).some(p => p.category === k));
+    $('#placeChips').innerHTML = `<button class="chip ${!this.pcat ? 'on' : ''}" data-c="">All places</button>` +
+      pc.map(([k, [e, n]]) => `<button class="chip ${this.pcat === k ? 'on' : ''}" data-c="${k}">${e} ${esc(n)}</button>`).join('');
+    $$('#placeChips .chip').forEach(b => b.onclick = () => { this.pcat = b.dataset.c; this.renderChips(); this.renderList(); this.renderMarkers(); });
+    $('#nItems').textContent = items.length;
+    $('#nPlaces').textContent = (this.db?.places || []).length;
+    $('#nMine').textContent = this.mine.length;
+  },
+  renderFloors() {
+    const used = new Set([...(this.db?.items || []), ...(this.db?.places || [])].map(x => String(x.floor || '')).filter(Boolean));
+    const floors = (this.db?.config.floors || []).filter(f => used.has(String(f)));
+    $('#floors').classList.toggle('hidden', !floors.length);
+    $('#floors').innerHTML = `<div class="h">FLR</div><button class="${!this.floor ? 'on' : ''}" data-f="" title="All floors">All</button>` +
+      [...floors].reverse().map(f => `<button class="${this.floor === f ? 'on' : ''}" data-f="${esc(f)}" title="${esc(floorLabel(f))}">${esc(f)}</button>`).join('');
+    $$('#floors button').forEach(b => b.onclick = () => { this.floor = b.dataset.f; this.renderFloors(); this.renderMarkers(); this.renderList(); });
+  },
+  setTab(t) {
+    this.tab = t;
+    $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t));
+    $('#toolsItems').classList.toggle('hidden', t !== 'items');
+    $('#toolsPlaces').classList.toggle('hidden', t !== 'places');
+    $('#toolsMine').classList.toggle('hidden', t !== 'mine');
+    this.renderList();
+  },
+  whereLine(x) {
+    const room = x.room && (/^\d/.test(x.room) ? 'Room ' + x.room : x.room);
+    return [x.building, floorLabel(x.floor), room].filter(Boolean).join(' · ');
+  },
+  renderList() {
+    if (!this.db) return;
+    const L_ = $('#list');
+    if (this.tab === 'items') {
+      const list = this.visibleItems().filter(this.onFloor);
+      const open = list.filter(i => i.status === 'open').length;
+      const week = (this.db.items || []).filter(i => i.type === 'found' && Date.now() - new Date(i.created || i.date) < 7 * 864e5).length;
+      const ret = (this.db.items || []).filter(i => i.status === 'returned').length;
+      $('#itemStat').innerHTML = `<b>${open}</b> waiting for their owners · <b>${week}</b> found this week · <b>${ret}</b> returned${this.floor ? ` · floor <b>${esc(this.floor)}</b>` : ''}`;
+      L_.innerHTML = list.length ? `<div class="feed">${list.map(i => this.tile(i)).join('')}</div>` :
+        `<div class="empty">${icon('search')}${this.q ? `Nothing matches “${esc(this.q)}”.` : 'Nothing posted yet.'}<br><br><button class="btn primary" onclick="App.openReport('lost')">${icon('plus')} Report what you lost</button></div>`;
+      $$('.tile', L_).forEach(c => c.onclick = () => this.openItem(c.dataset.id));
+    } else if (this.tab === 'places') {
+      const list = this.visiblePlaces().filter(this.onFloor);
+      L_.innerHTML = list.length ? list.map(p => {
+        const [e, n] = PLACE_CATS[p.category] || PLACE_CATS.other;
+        return `<div class="rcard ${p.category === 'desk' ? 'desk' : ''}" data-id="${esc(p.id)}"><div class="ic">${e}</div>
+          <div class="tx"><b>${esc(p.name)}</b><small>${esc(this.whereLine(p) || n)}${p.hours ? ' · ' + esc(p.hours) : ''}</small></div></div>`;
+      }).join('') : `<div class="empty">${icon('building')}${this.q ? `No place matches “${esc(this.q)}”.` : 'No campus places yet.'}</div>`;
+      $$('.rcard', L_).forEach(c => c.onclick = () => this.openPlace(c.dataset.id));
+    } else {
+      const posted = new Map((this.db.items || []).filter(i => i.sid).map(i => [i.sid, i]));
+      L_.innerHTML = this.mine.length ? this.mine.map(m => {
+        const item = posted.get(m.sid), [e] = ITEM_CATS[m.sub?.category] || ITEM_CATS.other;
+        return `<div class="rcard" style="cursor:default;align-items:flex-start">
+          ${m.sub?.image ? `<img class="thumb" src="${esc(LF.thumb(m.sub.image, 120))}" alt="">` : `<div class="ic">${e}</div>`}
+          <div class="tx"><div class="row" style="gap:5px;margin-bottom:3px"><span class="badge b-${m.type}">${m.type}</span>
+            ${item ? `<span class="badge st-open">Posted · ${esc(item.ref)}</span>` : '<span class="badge st-claimed">With the desk</span>'}</div>
+            <b>${esc(m.title)}</b><small>Sent ${ago(m.at)}</small>
+            <div class="btns" style="margin-top:8px">${item ? `<button class="btn sm" data-open="${esc(item.id)}">${icon('eye')} Open</button>` : `<button class="btn sm" data-resend="${esc(m.sid)}">${icon('send')} Send again</button>`}
+              <button class="btn sm ghost danger" data-forget="${esc(m.sid)}">Forget</button></div></div></div>`;
+      }).join('') : `<div class="empty">${icon('receipt')}No reports from this device yet.<br><br><button class="btn primary" onclick="App.openReport()">${icon('plus')} Report an item</button></div>`;
+      $$('[data-open]', L_).forEach(b => b.onclick = () => this.openItem(b.dataset.open));
+      $$('[data-resend]', L_).forEach(b => b.onclick = () => { const m = this.mine.find(x => x.sid === b.dataset.resend); $('#mReport').classList.add('on'); this.showSent(m.sub, m.link); });
+      $$('[data-forget]', L_).forEach(b => b.onclick = () => { this.mine = this.mine.filter(x => x.sid !== b.dataset.forget); this.saveMine(); this.renderList(); this.renderChips(); });
+    }
+  },
+  tile(i) {
+    const [e] = ITEM_CATS[i.category] || ITEM_CATS.other;
+    const st = STATUS[i.status] || STATUS.open;
+    return `<div class="tile ${this.sel === i.id ? 'sel' : ''} ${i.status === 'returned' ? 'done' : ''}" data-id="${esc(i.id)}">
+      <div class="ph">${i.image ? LF.img(i.image, 320, i.title, '', e) : `<div class="noimg">${e}</div>`}
+        <span class="tag"><span class="badge b-${i.type}">${i.type === 'lost' ? 'Lost' : 'Found'}</span></span>
+        <span class="ref">${esc(i.ref)}</span></div>
+      <div class="bd"><h3>${esc(i.title)}</h3>
+        <div class="loc">${icon('pin')}<span>${esc(this.whereLine(i) || i.note || 'Location not given')}</span></div>
+        <div class="when">${i.status !== 'open' ? esc(st[0]) + ' · ' : ''}${ago(i.created || i.date)}</div></div></div>`;
+  },
+
+  // ───────────────────────── map markers ─────────────────────────
+  renderMarkers() {
+    if (!this.map || !this.db) return;
+    this.layers.items.clearLayers(); this.layers.places.clearLayers();
+    for (const p of (this.db.places || []).filter(p => p.lat && this.onFloor(p) && (!this.pcat || p.category === this.pcat) && (!this.q || LF.matches(LF.placeText(p), this.q)))) {
+      L.marker([p.lat, p.lng], { icon: LF.placeIcon(p), zIndexOffset: p.category === 'desk' ? 500 : 0, title: p.name })
+        .on('click', () => this.openPlace(p.id)).addTo(this.layers.places);
+    }
+    const list = this.visibleItems().filter(i => i.lat && this.onFloor(i));
+    const icon_ = i => (ITEM_CATS[i.category] || ITEM_CATS.other)[0];
+    // Below building zoom, items gather into one bubble per building (or ~25 m cell outside buildings)
+    if (this.map.getZoom() < 19 && list.length > 12) {
+      const groups = new Map();
+      for (const i of list) {
+        const b = LF.buildingAt(i.lat, i.lng, this.m.campus);
+        const k = b ? b.id : `${(i.lat / .00025).toFixed(0)},${(i.lng / .00025).toFixed(0)}`;
+        (groups.get(k) || groups.set(k, []).get(k)).push(i);
+      }
+      for (const g of groups.values()) {
+        if (g.length === 1) { this.addPin(g[0]); continue; }
+        const lat = g.reduce((a, i) => a + i.lat, 0) / g.length, lng = g.reduce((a, i) => a + i.lng, 0) / g.length;
+        const top = g.find(i => i.image) || g[0];
+        L.marker([lat, lng], { icon: LF.clusterIcon(g.length, top.image, icon_(top)), zIndexOffset: 300, title: `${g.length} items` })
+          .on('click', () => this.map.flyTo([lat, lng], 20, { duration: .5 })).addTo(this.layers.items);
+      }
+      return;
+    }
+    const seen = {};      // items at the same spot fan out so every pin stays tappable
+    for (const i of list) {
+      const k = i.lat.toFixed(5) + ',' + i.lng.toFixed(5), n = seen[k] = (seen[k] || 0) + 1;
+      const ang = n * 2.4, r = n > 1 ? 0.000014 * Math.sqrt(n) : 0;
+      this.addPin(i, i.lat + r * Math.cos(ang), i.lng + r * Math.sin(ang));
+    }
+  },
+  addPin(i, lat = i.lat, lng = i.lng) {
+    const [e] = ITEM_CATS[i.category] || ITEM_CATS.other;
+    L.marker([lat, lng], {
+      icon: LF.pinIcon(i.status === 'returned' ? 'done' : i.type, e, { photo: i.image, active: this.sel === i.id, floor: i.floor ? (/^\d+$/.test(i.floor) ? i.floor + 'F' : String(i.floor).slice(0, 3).toUpperCase()) : '' }),
+      zIndexOffset: this.sel === i.id ? 2000 : 100, title: i.title,
+    }).on('click', () => this.openItem(i.id)).addTo(this.layers.items);
+  },
+
+  // ───────────────────────── details (post view) ─────────────────────────
+  openDrawer(head, html) {
+    $('#dHead').innerHTML = head + `<button class="iconbtn" id="dShare" title="Copy link">${icon('share')}</button><button class="iconbtn" id="dClose" title="Close">${icon('x')}</button>`;
+    $('#dShare').onclick = () => this.share(); $('#dClose').onclick = () => this.closeDrawer();
+    $('#dBody').innerHTML = html; $('#dBody').scrollTop = 0;
+    $('#drawer').classList.add('on');
+  },
+  closeDrawer() {
+    $('#drawer').classList.remove('on'); this.sel = null; this.renderMarkers();
+    $$('.tile.sel').forEach(c => c.classList.remove('sel'));
+    if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+  },
+  desk() { return (this.db?.places || []).find(p => p.category === 'desk'); },
+  dirLink: (lat, lng) => `https://www.google.com/maps/dir/?api=1&travelmode=walking&destination=${lat},${lng}`,
+  openItem(id, fly = true) {
+    const i = (this.db?.items || []).find(x => x.id === id || x.ref === id);
+    if (!i) return toast('That item is no longer listed', 'warn');
+    this.sel = i.id; this.renderMarkers();
+    $$('.tile').forEach(c => c.classList.toggle('sel', c.dataset.id === i.id));
+    const [e, cn] = ITEM_CATS[i.category] || ITEM_CATS.other, st = STATUS[i.status] || STATUS.open;
+    const desk = this.desk(), c = this.db.config;
+    const near = (this.db.items || []).filter(x => x.id !== i.id && x.lat && i.lat && x.status === 'open' && LF.dist([x.lat, x.lng], [i.lat, i.lng]) < 40).slice(0, 4);
+    const when = i.date ? new Date(i.date + 'T00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : '';
+    this.openDrawer(`<div class="av"><div>${e}</div></div><div class="t"><b>${esc(i.title)}</b><a onclick="${i.lat ? `App.flyTo(${i.lat},${i.lng},21)` : ''}">${esc(this.whereLine(i) || 'Location not given')}</a></div>`, `
+      <div class="hero">${i.image ? `<img src="${esc(LF.thumb(i.image, 900))}" data-orig="${esc(i.image)}" data-fb="${e}" data-zoom="${esc(i.image)}" alt="" onerror="LF.imgFail(this)">` : e}</div>
+      <div class="actbar">
+        ${i.lat ? `<button class="iconbtn" title="Show on map" onclick="App.flyTo(${i.lat},${i.lng},21)">${icon('pin')}</button><a class="iconbtn" title="Walking directions" target="_blank" rel="noopener" href="${this.dirLink(i.lat, i.lng)}">${icon('nav')}</a>` : ''}
+        <button class="iconbtn" title="Share" onclick="App.share()">${icon('send')}</button><span class="sp"></span>
+        <span class="badge b-${i.type}">${i.type === 'lost' ? 'Lost' : 'Found'}</span><span class="badge ${st[1]}" style="margin-left:5px">${st[0]}</span>
+      </div>
+      <div class="dsec" style="padding-top:0"><div class="k">${esc(i.ref)} · ${esc(cn)}${i.color ? ' · ' + esc(i.color) : ''}</div>
+        <h2>${esc(i.title)}</h2>${i.note ? `<p class="cap">${esc(i.note)}</p>` : ''}
+        <div class="k" style="margin:10px 0 0">Posted ${ago(i.created || i.date)}</div></div>
+      <div class="dsec"><span class="k">${i.type === 'lost' ? 'Last seen' : 'Where it was found'}</span>
+        <div class="where">${icon('pin')}<div><b>${esc(this.whereLine(i) || 'Location not given')}</b>${i.spot ? `<div class="mute">${esc(i.spot)}</div>` : ''}
+          <div class="mute" style="font-size:12px;margin-top:2px">${when}${i.time ? ' · ' + esc(i.time) : ''}</div></div></div></div>
+      <div class="dsec"><div class="claim"><span class="k">${i.type === 'lost' ? 'Found it?' : 'Is it yours?'}</span>
+        ${i.status === 'returned' ? 'This item is already back with its owner.' : i.type === 'lost'
+          ? `Bring it to the <b>Lost &amp; Found desk</b>${desk ? ` — ${esc(this.whereLine(desk) || desk.name)}` : ''} and mention <b class="mono">${esc(i.ref)}</b>. Thank you!`
+          : `${esc(c.claim_text)} Mention <b class="mono">${esc(i.ref)}</b>.`}
+        ${desk && i.status !== 'returned' ? `<div class="btns" style="margin-top:12px"><button class="btn sm primary" onclick="App.openPlace('${esc(desk.id)}')">${icon('compass')} Where is the desk?</button>${c.desk_hours ? `<span class="stat" style="align-self:center;color:rgba(255,255,255,.6)">${esc(c.desk_hours)}</span>` : ''}</div>` : ''}
+      </div></div>
+      ${near.length ? `<div class="dsec"><span class="k">Also found nearby</span><div class="feed">${near.map(x => this.tile(x)).join('')}</div></div>` : ''}`);
+    $$('#dBody .tile').forEach(c => c.onclick = () => this.openItem(c.dataset.id));
+    if (fly && i.lat) this.flyTo(i.lat, i.lng, Math.max(this.map.getZoom(), 20), true);
+    this.setHash('item', i.ref);
+  },
+  openPlace(id) {
+    const p = (this.db?.places || []).find(x => x.id === id);
+    if (!p) return;
+    const [e, cn] = PLACE_CATS[p.category] || PLACE_CATS.other;
+    const items = (this.db.items || []).filter(i => i.status === 'open' && i.lat && p.lat && (LF.dist([i.lat, i.lng], [p.lat, p.lng]) < 30 || (p.building && i.building === p.building && (!p.floor || i.floor === p.floor))));
+    this.openDrawer(`<div class="av"><div>${e}</div></div><div class="t"><b>${esc(p.name)}</b><span>${esc(cn)}</span></div>`, `
+      ${p.image ? `<div class="hero" style="aspect-ratio:16/9"><img src="${esc(LF.thumb(p.image, 900))}" data-zoom="${esc(p.image)}" alt=""></div>` : ''}
+      <div class="actbar">${p.lat ? `<button class="iconbtn" title="Show on map" onclick="App.flyTo(${p.lat},${p.lng},21)">${icon('pin')}</button><a class="iconbtn" title="Walking directions" target="_blank" rel="noopener" href="${this.dirLink(p.lat, p.lng)}">${icon('nav')}</a>` : ''}
+        <button class="iconbtn" title="Share" onclick="App.share()">${icon('send')}</button></div>
+      <div class="dsec" style="padding-top:0"><div class="k">${esc(cn)}</div><h2>${esc(p.name)}</h2>
+        ${p.aliases ? `<div class="mute" style="font-size:12.5px">Also called ${esc(p.aliases)}</div>` : ''}${p.note ? `<p class="cap" style="margin-top:8px">${esc(p.note)}</p>` : ''}</div>
+      <div class="dsec"><dl class="kv">
+        ${p.building ? `<dt>Building</dt><dd>${esc(p.building)}</dd>` : ''}${p.floor ? `<dt>Floor</dt><dd>${esc(floorLabel(p.floor))}</dd>` : ''}
+        ${p.room ? `<dt>Room</dt><dd>${esc(p.room)}</dd>` : ''}${p.hours ? `<dt>Hours</dt><dd>${esc(p.hours)}</dd>` : ''}
+        ${p.category === 'desk' && this.db.config.desk_hours ? `<dt>Desk hours</dt><dd>${esc(this.db.config.desk_hours)}</dd>` : ''}
+        ${p.lat ? `<dt>Map</dt><dd><a class="mono" href="${this.dirLink(p.lat, p.lng)}" target="_blank" rel="noopener">${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}</a></dd>` : ''}</dl></div>
+      ${items.length ? `<div class="dsec"><span class="k">Found items around here</span><div class="feed">${items.map(x => this.tile(x)).join('')}</div></div>` : ''}`);
+    $$('#dBody .tile').forEach(c => c.onclick = () => this.openItem(c.dataset.id));
+    if (p.lat) this.flyTo(p.lat, p.lng, Math.max(this.map.getZoom(), 20), true);
+    this.setHash('place', p.id);
+  },
+  openBuilding(f, ll) {
+    const name = LF.buildingName(f, this.db?.places || []) || 'Campus building';
+    const ring = f.geometry.coordinates[0];
+    const inside = x => x.lat && LF.inPoly(x.lat, x.lng, ring);
+    const items = (this.db?.items || []).filter(i => i.status === 'open' && (inside(i) || i.building === name));
+    const places = (this.db?.places || []).filter(p => p.category !== 'building' && (inside(p) || p.building === name));
+    L.popup({ maxWidth: 280 }).setLatLng(ll).setContent(`<div class="bpop"><span class="k">Building${f.properties.levels ? ' · ' + esc(f.properties.levels) + ' floors' : ''}</span><b>${esc(name)}</b>
+      <span class="mute">${items.length} found item${items.length !== 1 ? 's' : ''} · ${places.length} place${places.length !== 1 ? 's' : ''} inside</span>
+      ${places.slice(0, 6).map(p => `<a href="#place=${esc(p.id)}">${(PLACE_CATS[p.category] || PLACE_CATS.other)[0]} ${esc(p.name)} <span class="mute">${esc(floorLabel(p.floor))}</span></a>`).join('')}
+      ${items.slice(0, 5).map(i => `<a href="#item=${esc(i.ref)}">${(ITEM_CATS[i.category] || ITEM_CATS.other)[0]} ${esc(i.title)} <span class="mute">${esc(floorLabel(i.floor))}</span></a>`).join('')}
+      <div class="row"><button class="btn sm primary" onclick="App.openReport('found',{lat:${ll.lat},lng:${ll.lng}})">${icon('plus')} I found something here</button></div></div>`).openOn(this.map);
+  },
+  flyTo(lat, lng, z = 20, keepPanel) {
+    if (this.isMobile() && !keepPanel) { document.body.classList.remove('v-list'); $('#drawer').classList.remove('on'); this.nav('map'); }
+    const off = !this.isMobile() && $('#drawer').classList.contains('on') ? -215 : 0;   // keep the pin clear of the drawer
+    this.map.flyTo(this.map.unproject(this.map.project([lat, lng], z).add([off, 0]), z), z, { duration: .6 });
+  },
+  searchJump() {
+    const p = this.visiblePlaces()[0], i = this.visibleItems()[0];
+    if (this.tab === 'places' && p) this.openPlace(p.id); else if (i) this.openItem(i.id); else if (p) this.openPlace(p.id);
+  },
+
+  // ───────────────────────── links ─────────────────────────
+  setHash(k, v) { history.replaceState(null, '', `#${k}=${encodeURIComponent(v)}`); },
+  route() {
+    const m = location.hash.match(/^#(item|place|report)=?(.*)$/);
+    if (!m || !this.db) return;
+    const v = decodeURIComponent(m[2] || '');
+    if (m[1] === 'item') this.openItem(v);
+    if (m[1] === 'place') this.openPlace(v);
+    if (m[1] === 'report') this.openReport(v === 'lost' ? 'lost' : 'found');
+  },
+  async share() {
+    const url = location.href;
+    try { if (navigator.share && this.isMobile()) await navigator.share({ title: document.title, url }); else { await navigator.clipboard.writeText(url); toast('Link copied', 'ok'); } } catch { }
+  },
+  saveMine() { localStorage.setItem('hanap.mine', JSON.stringify(this.mine.slice(0, 30))); },
+
+  // ───────────────────────── report wizard ─────────────────────────
+  rep: null,
+  openReport(type, at) {
+    const now = new Date();
+    this.rep = { type: type || '', category: '', title: '', color: '', note: '', image: '', lat: at?.lat, lng: at?.lng,
+      building: '', floor: '', room: '', spot: '', date: now.toISOString().slice(0, 10), time: now.toTimeString().slice(0, 5), name: '', contact: '' };
+    this.map.closePopup();
+    $('#mReport').classList.add('on');
+    this.repStep(1);
+  },
+  closeReport() { $('#mReport').classList.remove('on'); this.picker = null; $$('.bnav button').forEach(b => b.classList.toggle('on', b.dataset.nav === 'map')); },
+  head(step, title) {
+    $('#rKick').textContent = step ? `Report · step ${step} of 3` : 'Report · ready';
+    $('#rTitle').textContent = title;
+    $('#rSteps').classList.toggle('hidden', !step);
+    $$('#rSteps span').forEach((s, i) => s.classList.toggle('on', i < step));
+  },
+  repStep(n) {
+    const r = this.rep;
+    if (n === 1) {
+      this.head(1, 'What is it?');
+      $('#rBody').innerHTML = `
+        <div class="typepick">
+          <button type="button" class="found ${r.type === 'found' ? 'on' : ''}" data-type="found">${icon('hand')}<b>I found something</b><small>Help it get back to its owner</small></button>
+          <button type="button" class="lost ${r.type === 'lost' ? 'on' : ''}" data-type="lost">${icon('alert')}<b>I lost something</b><small>Let the desk and finders know</small></button>
+        </div>
+        <label class="f">Item *</label>
+        <input class="in" id="rTitleIn" maxlength="70" placeholder="e.g. Black umbrella with a wooden handle" value="${esc(r.title)}">
+        <label class="f">Category</label>
+        <div class="catgrid">${Object.entries(ITEM_CATS).map(([k, [e, nm]]) => `<button type="button" data-cat="${k}" class="${r.category === k ? 'on' : ''}"><span>${e}</span>${esc(nm)}</button>`).join('')}</div>
+        <div class="grid2"><div><label class="f">Color</label><input class="in" id="rColor" maxlength="30" placeholder="e.g. navy blue" value="${esc(r.color)}"></div>
+          <div><label class="f">${r.type === 'lost' ? 'Lost on' : 'Found on'}</label><div class="grid2" style="gap:6px"><input class="in" type="date" id="rDate" value="${esc(r.date)}"><input class="in" type="time" id="rTime" value="${esc(r.time)}"></div></div></div>
+        <label class="f">Details <small>— marks, stickers, brand (never ID or card numbers)</small></label>
+        <textarea class="in" id="rNote" maxlength="400" placeholder="e.g. has a cat keychain, name sticker scratched off">${esc(r.note)}</textarea>
+        <label class="f">Photo <small>— optional, but it helps a lot</small></label>
+        <div class="photo"><div class="pv" id="rPv">${r.image ? `<img src="${esc(LF.thumb(r.image, 200))}" alt="">` : icon('camera')}</div>
+          <div style="flex:1;min-width:0">
+            <input class="in" id="rImg" placeholder="Paste an image link (https://…)" value="${esc(r.image)}">
+            ${this.db?.config.cloudinary?.cloud && this.db.config.cloudinary.preset ? `<div class="row" style="margin-top:6px"><label class="btn sm" style="cursor:pointer">${icon('upload')} Upload a photo<input type="file" accept="image/*" capture="environment" id="rFile" hidden></label><span class="hint" id="rUp" style="margin:0"></span></div>`
+              : `<div class="hint">Upload to <a href="https://postimages.org" target="_blank" rel="noopener">postimages.org</a> or <a href="https://imgur.com/upload" target="_blank" rel="noopener">imgur.com</a>, then paste the direct link.</div>`}
+          </div></div>`;
+      $$('[data-type]').forEach(b => b.onclick = () => { r.type = b.dataset.type; $$('[data-type]').forEach(x => x.classList.toggle('on', x === b)); });
+      $$('[data-cat]').forEach(b => b.onclick = () => { r.category = b.dataset.cat; $$('[data-cat]').forEach(x => x.classList.toggle('on', x === b)); });
+      $('#rImg').oninput = e => { r.image = e.target.value.trim(); $('#rPv').innerHTML = r.image ? `<img src="${esc(LF.thumb(r.image, 200))}" alt="" onerror="this.onerror=null;this.src=${esc(JSON.stringify(r.image))}">` : icon('camera'); };
+      const f = $('#rFile');
+      if (f) f.onchange = async () => {
+        $('#rUp').textContent = 'Uploading…';
+        try { r.image = await LF.uploadImage(f.files[0], this.db.config); $('#rImg').value = r.image; $('#rImg').oninput({ target: $('#rImg') }); $('#rUp').textContent = 'Uploaded'; }
+        catch (e) { $('#rUp').textContent = e.message; }
+      };
+      $('#rFoot').innerHTML = `<span class="hint" style="margin:0 auto 0 0">Nothing goes live until the desk checks it.</span><button class="btn primary" id="rNext">Next ${icon('nav')}</button>`;
+      $('#rNext').onclick = () => {
+        r.title = $('#rTitleIn').value.trim(); r.color = $('#rColor').value.trim(); r.note = $('#rNote').value.trim();
+        r.date = $('#rDate').value; r.time = $('#rTime').value; r.image = $('#rImg').value.trim();
+        if (!r.type) return toast('Choose “I found” or “I lost” first', 'warn');
+        if (!r.title) return toast('Say what the item is', 'warn');
+        if (r.image && !/^https:\/\//.test(r.image)) return toast('The photo link must start with https://', 'warn');
+        this.repStep(2);
+      };
+      setTimeout(() => $('#rTitleIn').focus(), 80);
+    }
+    if (n === 2) {
+      this.head(2, r.type === 'lost' ? 'Where did you last have it?' : 'Where did you find it?');
+      const floors = this.db?.config.floors || [];
+      $('#rBody').innerHTML = `
+        <div class="hint" style="margin:0 0 8px">Drag the map until the pin sits on the exact spot. Zoom in for detail.</div>
+        <div class="picker" id="rPicker"></div>
+        <div class="detected" id="rDetected">${icon('pin')} Locating…</div>
+        <div class="grid3">
+          <div><label class="f">Building</label><input class="in" id="rBld" list="bldList" placeholder="e.g. Main" value="${esc(r.building)}">
+            <datalist id="bldList">${[...new Set((this.db?.places || []).filter(p => p.category === 'building').map(p => p.name))].map(n => `<option value="${esc(n)}">`).join('')}</datalist></div>
+          <div><label class="f">Floor</label><select class="in" id="rFloor"><option value="">—</option>${floors.map(f => `<option value="${esc(f)}" ${r.floor === f ? 'selected' : ''}>${esc(floorLabel(f))}</option>`).join('')}<option value="outside" ${r.floor === 'outside' ? 'selected' : ''}>Outside / open area</option></select></div>
+          <div><label class="f">Room / area</label><input class="in" id="rRoom" list="roomList" placeholder="e.g. 305" value="${esc(r.room)}">
+            <datalist id="roomList">${(this.db?.places || []).filter(p => p.category !== 'building').map(p => `<option value="${esc(p.room || p.name)}">${esc(p.name)}</option>`).join('')}</datalist></div>
+        </div>
+        <label class="f">Exact spot <small>— optional</small></label>
+        <input class="in" id="rSpot" maxlength="120" placeholder="e.g. last row of chairs, beside the water dispenser" value="${esc(r.spot)}">`;
+      let autoBld = !r.building;
+      $('#rBld').oninput = () => { autoBld = false; };
+      LF.makePicker($('#rPicker'), {
+        lat: r.lat || this.map.getCenter().lat, lng: r.lng || this.map.getCenter().lng, places: this.db?.places || [], view: this.map._lfView,
+        onChange: ({ lat, lng, building, inCampus }) => {
+          r.lat = lat; r.lng = lng;
+          if (building?.name && autoBld) $('#rBld').value = building.name;
+          $('#rDetected').innerHTML = building ? `${icon('building')} Inside <b>${esc(building.name || 'a campus building')}</b> — add the floor and room`
+            : inCampus ? `${icon('pin')} Open area on campus` : `${icon('alert')} Outside the campus — fine if that is where it was`;
+        },
+      }).then(p => { this.picker = p; });
+      $('#rFoot').innerHTML = `<button class="btn ghost" id="rBack">${icon('back')} Back</button><span style="flex:1"></span><button class="btn primary" id="rNext">Next ${icon('nav')}</button>`;
+      $('#rBack').onclick = () => { this.saveWhere(); this.repStep(1); };
+      $('#rNext').onclick = () => { this.saveWhere(); this.repStep(3); };
+    }
+    if (n === 3) {
+      this.head(3, 'Review and send');
+      const desk = this.desk();
+      $('#rBody').innerHTML = `
+        ${this.summaryHtml(r)}
+        <div class="grid2">
+          <div><label class="f">Your name <small>— optional</small></label><input class="in" id="rName" maxlength="60" value="${esc(r.name)}"></div>
+          <div><label class="f">${r.type === 'lost' ? 'Email or mobile *' : 'Contact <small>— optional</small>'}</label><input class="in" id="rContact" maxlength="80" value="${esc(r.contact)}"></div>
+        </div>
+        <div class="hint">${icon('lock')} Your name and contact go only to the Lost &amp; Found desk. They are never shown on the site.</div>
+        ${r.type === 'found' ? `<div class="claim" style="margin-top:14px"><span class="k">Next</span>Please bring the item to the <b>Lost &amp; Found desk</b>${desk ? ` — ${esc(this.whereLine(desk) || desk.name)}` : ''} so the owner can claim it safely.</div>` : ''}`;
+      $('#rFoot').innerHTML = `<button class="btn ghost" id="rBack">${icon('back')} Back</button><span style="flex:1"></span><button class="btn primary" id="rSend">${icon('check')} Create report</button>`;
+      $('#rBack').onclick = () => { r.name = $('#rName').value.trim(); r.contact = $('#rContact').value.trim(); this.repStep(2); };
+      $('#rSend').onclick = async () => {
+        r.name = $('#rName').value.trim(); r.contact = $('#rContact').value.trim();
+        if (r.type === 'lost' && !r.contact) return toast('Add an email or mobile so the desk can reach you', 'warn');
+        const sub = { v: 1, sid: LF.uid().slice(0, 12), at: new Date().toISOString(),
+          ...Object.fromEntries(['type', 'title', 'category', 'color', 'note', 'image', 'lat', 'lng', 'building', 'floor', 'room', 'spot', 'date', 'time', 'name', 'contact'].map(k => [k, r[k] || undefined])) };
+        const code = await LF.encodeSubmission(sub);
+        const link = new URL('admin.html', location.href).href + '#submit=' + code;
+        this.mine.unshift({ sid: sub.sid, type: sub.type, title: sub.title, at: sub.at, sub, link });
+        this.saveMine(); this.renderChips();
+        this.showSent(sub, link);
+      };
+    }
+  },
+  saveWhere() {
+    const r = this.rep;
+    r.building = $('#rBld').value.trim(); r.floor = $('#rFloor').value; r.room = $('#rRoom').value.trim(); r.spot = $('#rSpot').value.trim();
+  },
+  summaryHtml(r) {
+    const [e, cn] = ITEM_CATS[r.category] || ITEM_CATS.other;
+    return `<div class="rcard" style="cursor:default;align-items:flex-start;margin:4px 0 0">
+      ${r.image ? `<img class="thumb" src="${esc(LF.thumb(r.image, 160))}" alt="">` : `<div class="ic">${e}</div>`}
+      <div class="tx"><span class="badge b-${r.type}">${r.type}</span><b style="margin-top:4px">${esc(r.title)}</b>
+        <small>${esc(this.whereLine(r) || 'Pinned on the map')}${r.spot ? ' — ' + esc(r.spot) : ''}</small>
+        <small>${esc(cn)}${r.color ? ' · ' + esc(r.color) : ''} · ${esc(r.date || '')} ${esc(r.time || '')}</small></div></div>`;
+  },
+  showSent(sub, link) {
+    const c = this.db?.config || {};
+    const text = `${sub.type === 'lost' ? 'LOST' : 'FOUND'}: ${sub.title}\nWhere: ${[sub.building, floorLabel(sub.floor), sub.room, sub.spot].filter(Boolean).join(', ') || 'see map'}\nWhen: ${sub.date || ''} ${sub.time || ''}\n${sub.note ? 'Details: ' + sub.note + '\n' : ''}${sub.name ? 'From: ' + sub.name + '\n' : ''}${sub.contact ? 'Contact: ' + sub.contact + '\n' : ''}\nOpen this report (desk only):\n${link}`;
+    this.head(0, 'Send it to the desk');
+    $('#rBody').innerHTML = `
+      <div class="done-hero"><div class="ring"><div>${icon('check')}</div></div><b>Report ready</b>
+        <div class="mute" style="margin-top:4px">Send it to the Lost &amp; Found desk — they check it and pin it on the map.</div></div>
+      <div class="sharebox">
+        <img alt="QR code" src="https://api.qrserver.com/v1/create-qr-code/?size=240x240&margin=0&data=${encodeURIComponent(link)}">
+        <div style="flex:1;min-width:0"><span class="k">At the desk</span><b style="display:block;margin:4px 0">Show this code</b><div class="hint" style="margin:0">The staff scan it and your report opens on their screen — nothing to type.</div></div>
+      </div>
+      <div class="btns" style="margin-top:14px;justify-content:center">
+        ${c.desk_email ? `<a class="btn primary" href="mailto:${esc(c.desk_email)}?subject=${encodeURIComponent(`[${c.site_name}] ${sub.type === 'lost' ? 'Lost' : 'Found'}: ${sub.title}`)}&body=${encodeURIComponent(text)}">${icon('mail')} Email the desk</a>` : ''}
+        ${navigator.share ? `<button class="btn" id="sShare">${icon('share')} Share</button>` : ''}
+        <button class="btn" id="sCopy">${icon('copy')} Copy report</button>
+      </div>
+      <div class="hint" style="text-align:center;margin-top:12px">Saved under <b>My reports</b> on this device.</div>`;
+    $('#rFoot').innerHTML = `<button class="btn dark" onclick="App.closeReport();App.setTab('mine');App.nav('list')">Done</button>`;
+    $('#sCopy').onclick = async () => { try { await navigator.clipboard.writeText(text); toast('Copied — paste it in a message to the desk', 'ok'); } catch { prompt('Copy this:', text); } };
+    if ($('#sShare')) $('#sShare').onclick = () => navigator.share({ title: `${sub.type === 'lost' ? 'Lost' : 'Found'}: ${sub.title}`, text }).catch(() => { });
+  },
+
+  // ───────────────────────── help ─────────────────────────
+  openHelp() {
+    const c = this.db?.config || LF.DEFAULT_CONFIG, desk = this.desk();
+    const step = (ic, t, d) => `<div class="rcard" style="cursor:default;align-items:flex-start"><div class="ic" style="color:var(--flame)">${icon(ic)}</div><div class="tx"><b>${t}</b><small style="white-space:normal">${d}</small></div></div>`;
+    $('#helpBody').innerHTML = `<p class="cap" style="margin:0 0 14px;color:var(--text2)">${esc(c.tagline)}</p>
+      ${step('search', 'Look first', 'Everything the desk receives is on the map and in the feed — with a photo and the exact spot. Search by color, brand or place.')}
+      ${step('hand', 'Found something?', 'Tap Report, pin the exact spot (zoom right in, pick the floor and room), then bring the item to the desk.')}
+      ${step('alert', 'Lost something?', 'Report it too — the desk can contact you when it turns up.')}
+      ${step('compass', 'Claim it', `At the Lost &amp; Found desk${desk ? ` (${esc(this.whereLine(desk) || desk.name)})` : ''} with your school ID. ${esc(c.desk_hours || '')}`)}
+      ${step('building', 'Find your way', 'The Campus tab lists offices, faculty rooms and labs. Tap a building to see what is inside; use the floor buttons to view one floor.')}
+      ${step('blueprint', 'Low on data?', 'Switch the map to Blueprint — it draws the campus without downloading map images. Photos are shrunk automatically.')}
+      <div class="btns" style="margin-top:14px"><button class="btn primary" onclick="document.getElementById('mHelp').classList.remove('on');App.openReport()">${icon('plus')} Report an item</button><a class="btn" href="admin.html">${icon('lock')} Desk login</a></div>`;
+    $('#mHelp').classList.add('on');
+  },
+};
+App.init();
 </script>
 </body>
 </html>
