@@ -1,0 +1,81 @@
+{
+ "version": 1,
+ "config": {
+  "site_name": "Hanap QCU",
+  "school": "Quezon City University",
+  "tagline": "Lost something? Found something? Find it — and find your way — around campus.",
+  "desk_email": "",
+  "desk_hours": "Mon–Fri, 8:00 AM – 5:00 PM",
+  "claim_text": "Go to the Lost & Found desk, show your school ID and describe the item (color, marks, contents). The desk keeps found items for 60 days.",
+  "floors": [
+   "G",
+   "2",
+   "3",
+   "4",
+   "5",
+   "6",
+   "7",
+   "8",
+   "9",
+   "10",
+   "11"
+  ],
+  "center": [
+   14.70044,
+   121.03272
+  ],
+  "zoom": 18,
+  "cloudinary": {
+   "cloud": "",
+   "preset": ""
+  }
+ },
+ "places": [
+  {
+   "id": "p-campus",
+   "name": "QCU Main Campus (San Bartolome)",
+   "category": "gate",
+   "note": "617 Quirino Highway, San Bartolome, Novaliches.",
+   "lat": 14.700444,
+   "lng": 121.032723
+  },
+  {
+   "id": "p-ndh",
+   "name": "Novaliches District Hospital",
+   "category": "clinic",
+   "aliases": "hospital, emergency",
+   "note": "Nearest hospital — right beside the campus on Quirino Highway.",
+   "lat": 14.700542,
+   "lng": 121.034384
+  }
+ ],
+ "items": [
+  {
+   "id": "a7b530cb-278a-4fc0-8d7b-7b96a1d1b5cb",
+   "title": "book",
+   "note": "floor11",
+   "image": "https://th.bing.com/th/id/OIP.5pJw3nz18Scgj2qT80uNHgHaFy?w=232&h=182&c=7&r=0&o=7&pid=1.7&rm=3",
+   "created": "2026-10-14T05:39:45.255Z",
+   "updated": "2026-10-14T05:41:46.933Z",
+   "type": "found",
+   "status": "open",
+   "category": "books",
+   "date": "2026-10-14",
+   "ref": "F-BK11",
+   "floor": "11"
+  },
+  {
+   "id": "b09767ae-5a43-405d-9f67-7b031b515bfd",
+   "title": "bottle",
+   "note": "cafeteria",
+   "image": "",
+   "created": "2026-10-14T05:30:04.252Z",
+   "type": "found",
+   "status": "open",
+   "category": "bottle",
+   "date": "2026-10-14",
+   "ref": "F-BT01",
+   "room": "Cafeteria"
+  }
+ ]
+}
