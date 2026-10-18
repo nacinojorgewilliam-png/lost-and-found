@@ -24,7 +24,7 @@
 <body>
 
 <header class="top">
-  <a class="brand" href="index.html"><div class="brand-mark">QCU</div><div><div class="brand-k">Lost &amp; Found · Desk</div><div class="brand-t" id="siteName">Hanap QCU</div></div></a>
+  <a class="brand" href="index.html"><div class="brand-mark">QCU</div><div><div class="brand-k">Lost &amp; Found · Desk</div><div class="brand-by">Created by <b>Jorge W</b></div></div></a>
   <div class="tdiv hide-m"></div>
   <div class="gsearch"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search items, references, places…" autocomplete="off"></div>
   <div class="sp"></div>
@@ -96,6 +96,7 @@ const D = {
     this.map = this.m.map;
     this.layers.items = L.layerGroup().addTo(this.map);
     this.layers.places = L.layerGroup().addTo(this.map);
+    this.map.on('contextmenu', e => this.db && this.spotPop(e.latlng));
     $$('#viewSw button').forEach(b => { b.classList.toggle('on', b.dataset.v === this.map._lfView); b.onclick = () => { this.m.setView(b.dataset.v); $$('#viewSw button').forEach(x => x.classList.toggle('on', x === b)); }; });
     $$('.tab').forEach(b => b.onclick = () => this.setTab(b.dataset.tab));
     $('#q').oninput = e => { this.q = e.target.value; this.render(); };
@@ -158,7 +159,6 @@ const D = {
       }
       this.sha = f.sha;
       this.db = LF.normalize(JSON.parse(f.text || '{}'));
-      $('#siteName').textContent = this.db.config.site_name;
       this.m.drawLabels(this.db.places);
       if (this.db.config.center) this.map.setView(this.db.config.center, this.db.config.zoom || 18);
       this.setDirty(migrated ? 1 : 0);
@@ -302,8 +302,13 @@ const D = {
         .addTo(this.layers.places);
     }
     for (const i of this.db.items.filter(i => i.lat && ['open', 'claimed'].includes(i.status))) {
-      L.marker([i.lat, i.lng], { icon: LF.pinIcon(i.type, (ITEM_CATS[i.category] || ITEM_CATS.other)[0], { small: true, photo: i.image }), title: i.title })
-        .on('click', () => this.editItem(i.id)).addTo(this.layers.items);
+      L.marker([i.lat, i.lng], { icon: LF.pinIcon(i.type, (ITEM_CATS[i.category] || ITEM_CATS.other)[0], { small: true, photo: i.image }), title: i.title + ' — drag to move', draggable: true })
+        .on('click', () => this.editItem(i.id))
+        .on('dragend', e => {
+          const ll = e.target.getLatLng(), b = LF.buildingAt(ll.lat, ll.lng, this.m.campus, this.db.places);
+          i.lat = +ll.lat.toFixed(7); i.lng = +ll.lng.toFixed(7); if (b?.name) i.building = b.name;
+          i.updated = new Date().toISOString(); this.touch(); toast(`Moved ${i.ref}${b?.name ? ' → ' + b.name : ''}`, 'ok');
+        }).addTo(this.layers.items);
     }
     for (const s of this.inbox.filter(s => !s.done && s.lat)) {
       L.marker([s.lat, s.lng], { icon: LF.pinIcon('done', '📥', { small: true }), title: 'Inbox: ' + s.title, opacity: .85 })
@@ -313,7 +318,7 @@ const D = {
   buildingPop(f, ll) {
     const name = LF.buildingName(f, this.db?.places || []);
     L.popup().setLatLng(ll).setContent(`<div class="bpop"><span class="k">Building</span><b>${esc(name || 'Unnamed building')}</b>
-      <div class="row"><button class="btn sm primary" id="bpName">${LF.icon('edit')} ${name ? 'Edit' : 'Name it'}</button><button class="btn sm" id="bpPlace">${LF.icon('plus')} Place here</button></div></div>`).openOn(this.map);
+      <div class="row"><button class="btn sm primary" id="bpName">${LF.icon('edit')} ${name ? 'Edit' : 'Name it'}</button><button class="btn sm" id="bpPlace">${LF.icon('plus')} Place here</button><button class="btn sm" id="bpItem">${LF.icon('plus')} Item here</button></div></div>`).openOn(this.map);
     setTimeout(() => {
       $('#bpName').onclick = () => {
         this.map.closePopup();
@@ -324,6 +329,17 @@ const D = {
         this.editPlace(null, { category: 'building', lat, lng, name: f.properties.name || '' });
       };
       $('#bpPlace').onclick = () => { this.map.closePopup(); this.editPlace(null, { lat: ll.lat, lng: ll.lng, building: name }); };
+      $('#bpItem').onclick = () => { this.map.closePopup(); this.editItem(null, { lat: ll.lat, lng: ll.lng, building: name || undefined }); };
+    }, 0);
+  },
+  // right-click (long-press on a phone) anywhere: add an item or a place at that spot
+  spotPop(ll) {
+    const b = LF.buildingAt(ll.lat, ll.lng, this.m.campus, this.db?.places || []), name = b?.name || '';
+    L.popup().setLatLng(ll).setContent(`<div class="bpop"><span class="k">${name ? 'In ' + esc(name) : 'This spot'}</span>
+      <div class="row"><button class="btn sm primary" id="spItem">${LF.icon('plus')} Item here</button><button class="btn sm" id="spPlace">${LF.icon('plus')} Place here</button></div></div>`).openOn(this.map);
+    setTimeout(() => {
+      $('#spItem').onclick = () => { this.map.closePopup(); this.editItem(null, { lat: ll.lat, lng: ll.lng, building: name || undefined }); };
+      $('#spPlace').onclick = () => { this.map.closePopup(); this.editPlace(null, { lat: ll.lat, lng: ll.lng, building: name }); };
     }, 0);
   },
 

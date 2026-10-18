@@ -17,7 +17,7 @@
 <header class="top">
   <a class="brand" href="#" onclick="App.home();return false">
     <div class="brand-mark">QCU</div>
-    <div><div class="brand-k" id="kicker">QCU · Lost &amp; Found</div><div class="brand-t" id="siteName">Hanap QCU</div></div>
+    <div><div class="brand-k" id="kicker">QCU · Lost &amp; Found</div><div class="brand-by">Created by <b>Jorge W</b></div></div>
   </a>
   <div class="tdiv hide-m"></div>
   <div class="gsearch"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search items, rooms, offices — e.g. umbrella, registrar" autocomplete="off" aria-label="Search"></div>
@@ -29,6 +29,7 @@
 
 <div class="app">
   <aside class="panel" id="panel">
+    <button class="grab" data-grab title="Expand / shrink"><i></i></button>
     <div class="tabs" id="tabs"></div>
     <div class="ptools" id="toolsItems">
       <div class="stories" id="stories"></div>
@@ -57,6 +58,7 @@
   </section>
 
   <aside class="drawer" id="drawer">
+    <button class="grab" data-grab title="Expand / shrink"><i></i></button>
     <div class="dhead" id="dHead"></div>
     <div class="dbody" id="dBody"></div>
   </aside>
@@ -136,7 +138,6 @@ const App = {
   setDb(db) {
     this.db = db;
     const c = db.config;
-    $('#siteName').textContent = c.site_name;
     $('#kicker').textContent = `${c.school.replace(/Quezon City University/i, 'QCU')} · Lost & Found`;
     document.title = `${c.site_name} · Lost & Found and Campus Finder`;
     if (this.m) this.m.drawLabels(db.places);
@@ -152,6 +153,8 @@ const App = {
       $$('#viewSw button').forEach(x => x.classList.toggle('on', x === b)); this.saverNote();
     });
     $$('.bnav button').forEach(b => b.onclick = () => this.nav(b.dataset.nav));
+    $$('[data-grab]').forEach(b => b.onclick = () => { document.body.classList.toggle('sheet-full'); this.layout(); });
+    addEventListener('resize', () => this.layout());
     $('#tHelp').onclick = () => this.openHelp();
     $('#tReport').onclick = () => this.openReport();
     $('#rClose').onclick = () => this.closeReport();
@@ -176,7 +179,15 @@ const App = {
     if (where === 'help') return this.openHelp();
     document.body.classList.toggle('v-list', where === 'list' || where === 'places');
     if (where === 'places') this.setTab('places'); else if (where === 'list') this.setTab(this.tab === 'places' ? 'items' : this.tab);
-    if (where === 'map') setTimeout(() => this.map.invalidateSize(), 260);
+    if (where === 'map') { $('#drawer').classList.remove('on'); this.sel = null; this.renderMarkers(); }
+    this.layout();
+  },
+  // phone: map on top, list / details as a bottom sheet (half, or full via the grab handle)
+  layout() {
+    const B = document.body, on = this.isMobile() && (B.classList.contains('v-list') || $('#drawer').classList.contains('on'));
+    B.classList.toggle('split', on);
+    if (!on) B.classList.remove('sheet-full');
+    clearTimeout(this._lt); this._lt = setTimeout(() => this.map.invalidateSize(), 280);
   },
   isMobile: () => matchMedia('(max-width:860px)').matches,
   home() { this.closeDrawer(); this.map.flyTo(this.db?.config.center || LF.CAMPUS.center, this.db?.config.zoom || 18); if (this.isMobile()) this.nav('map'); },
@@ -327,10 +338,10 @@ const App = {
     $('#dHead').innerHTML = head + `<button class="iconbtn" id="dShare" title="Copy link">${icon('share')}</button><button class="iconbtn" id="dClose" title="Close">${icon('x')}</button>`;
     $('#dShare').onclick = () => this.share(); $('#dClose').onclick = () => this.closeDrawer();
     $('#dBody').innerHTML = html; $('#dBody').scrollTop = 0;
-    $('#drawer').classList.add('on');
+    $('#drawer').classList.add('on'); this.layout();
   },
   closeDrawer() {
-    $('#drawer').classList.remove('on'); this.sel = null; this.renderMarkers();
+    $('#drawer').classList.remove('on'); this.sel = null; this.renderMarkers(); this.layout();
     $$('.tile.sel').forEach(c => c.classList.remove('sel'));
     if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   },
@@ -403,7 +414,12 @@ const App = {
       <div class="row"><button class="btn sm primary" onclick="App.openReport('found',{lat:${ll.lat},lng:${ll.lng}})">${icon('plus')} I found something here</button></div></div>`).openOn(this.map);
   },
   flyTo(lat, lng, z = 20, keepPanel) {
-    if (this.isMobile() && !keepPanel) { document.body.classList.remove('v-list'); $('#drawer').classList.remove('on'); this.nav('map'); }
+    if (this.isMobile()) {   // the map stays visible above the sheet: drop the sheet to half and fly once the map has resized
+      if (!keepPanel) document.body.classList.remove('sheet-full');
+      this.layout(); clearTimeout(this._ft);
+      this._ft = setTimeout(() => { this.map.invalidateSize(); this.map.flyTo([lat, lng], z, { duration: .6 }); }, 300);
+      return;
+    }
     const off = !this.isMobile() && $('#drawer').classList.contains('on') ? -215 : 0;   // keep the pin clear of the drawer
     this.map.flyTo(this.map.unproject(this.map.project([lat, lng], z).add([off, 0]), z), z, { duration: .6 });
   },
