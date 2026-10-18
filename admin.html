@@ -2,239 +2,441 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>GitHub JSON CRUD</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Desk · Hanap QCU</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0a2342">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<link rel="stylesheet" href="assets/app.css">
 <style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1b1f24;--mute:#667085;--line:#e1e4e8;--acc:#0b6bcb;--danger:#c62828;--ok:#1a7f37}
-@media (prefers-color-scheme:dark){:root{--bg:#0f1318;--card:#171d24;--ink:#e8ecf1;--mute:#98a2b3;--line:#2a323c;--acc:#5aa9ff;--danger:#ff7b72;--ok:#56d364}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 system-ui,sans-serif}
-main{max-width:760px;margin:0 auto;padding:16px}
-h1{font-size:1.3rem;margin:8px 0 12px}
-section,.item{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:12px}
-label{display:block;font-size:.85rem;color:var(--mute);margin:8px 0 3px}
-input,textarea{width:100%;padding:9px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);font:inherit}
-button{padding:9px 14px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--ink);font:inherit;cursor:pointer}
-button.p{background:var(--acc);border-color:var(--acc);color:#fff}
-button.d{color:var(--danger)}
-button:disabled{opacity:.5}
-button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:0 10px}
-@media (max-width:520px){.grid{grid-template-columns:1fr}}
-.item{display:flex;gap:12px}
-.item img{width:84px;height:84px;object-fit:cover;border-radius:8px;flex:none;background:var(--line)}
-.item h3{margin:0 0 2px;font-size:1rem}
-.item p{margin:0 0 8px;color:var(--mute);font-size:.92rem;word-break:break-word}
-#status{position:sticky;top:0;padding:8px 12px;border-radius:8px;margin-bottom:10px;background:var(--card);border:1px solid var(--line);font-size:.9rem}
-.dirty{color:var(--danger)}.clean{color:var(--ok)}
-details summary{cursor:pointer;font-weight:600}
-small{color:var(--mute)}
+.savebar{position:absolute;left:12px;right:12px;bottom:12px;z-index:700;background:var(--ink);color:#fff;border-radius:12px;padding:10px 12px;display:flex;gap:10px;align-items:center;box-shadow:0 14px 34px -10px rgba(0,0,0,.6)}
+.savebar.clean{background:var(--card);color:var(--text);border:1px solid var(--border2)}
+.savebar .msg{flex:1;font-size:13.5px}
+.ibox{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:12px}
+.ibox .private{background:rgba(245,179,1,.12);border-radius:9px;padding:7px 9px;font-size:12.5px;margin-top:8px}
+.stsel{height:28px;border-radius:7px;border:1px solid var(--border2);background:var(--input);font-size:11.5px;padding:0 6px}
+.login{max-width:520px;margin:40px auto;background:var(--card);border-radius:20px;padding:22px;box-shadow:var(--shadow)}
+.panel{width:450px}
+@media (max-width:860px){.panel{transform:none;position:relative;width:100%}.mapwrap{display:none}.app{bottom:0}}
 </style>
 </head>
 <body>
-<main>
-<h1>Items (stored in GitHub JSON)</h1>
-<div id="status">Not connected.</div>
 
-<section>
-<details id="cfg">
-<summary>Settings</summary>
-<div class="grid">
-<div><label>GitHub owner</label><input id="owner" placeholder="your-username"></div>
-<div><label>Repository</label><input id="repo" placeholder="my-repo"></div>
-<div><label>Data branch</label><input id="branch" value="data"></div>
-<div><label>File path</label><input id="path" value="data/items.json"></div>
-<div><label>Cloudinary cloud name</label><input id="cloud" placeholder="optional"></div>
-<div><label>Cloudinary unsigned preset</label><input id="preset" placeholder="optional"></div>
-</div>
-<label>GitHub token (fine-grained, Contents: read &amp; write, this repo only)</label>
-<input id="token" type="password" placeholder="github_pat_...">
-<div class="row" style="margin-top:10px">
-<button class="p" id="connect">Save settings &amp; load</button>
-</div>
-<small>Settings and token stay in this browser (localStorage). Use only on your own device.</small>
-</details>
-</section>
+<header class="top">
+  <a class="brand" href="index.html"><div class="brand-mark">QCU</div><div><div class="brand-k">Lost &amp; Found · Desk</div><div class="brand-t" id="siteName">Hanap QCU</div></div></a>
+  <div class="tdiv hide-m"></div>
+  <div class="gsearch"><svg class="ico" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg><input id="q" type="search" placeholder="Search items, references, places…" autocomplete="off"></div>
+  <div class="sp"></div>
+  <a class="tb-btn hide-m" href="index.html" target="_blank" data-ic="eye">Public site</a>
+  <button class="tb-btn" id="btnCfg" data-ic="lock">Connection</button>
+</header>
 
-<section>
-<strong id="formTitle">Add item</strong>
-<input type="hidden" id="editId">
-<label>Title</label><input id="title">
-<label>Note</label><textarea id="note" rows="2"></textarea>
-<label>Image: upload a file or paste a link</label>
-<input type="file" id="file" accept="image/*">
-<input id="imgUrl" placeholder="https://... (Google, Imgur, any direct image link)" style="margin-top:6px">
-<div class="row" style="margin-top:10px">
-<button class="p" id="saveItem">Add</button>
-<button id="cancel" hidden>Cancel edit</button>
-<span id="upmsg"><small></small></span>
+<div class="app" id="app">
+  <aside class="panel">
+    <div class="tabs">
+      <button class="tab on" data-tab="inbox" data-ic="inbox">Inbox <span class="n" id="nInbox">0</span></button>
+      <button class="tab" data-tab="items" data-ic="grid">Items <span class="n" id="nItems">0</span></button>
+      <button class="tab" data-tab="places" data-ic="building">Places <span class="n" id="nPlaces">0</span></button>
+      <button class="tab" data-tab="settings" data-ic="sliders">Site</button>
+    </div>
+    <div class="ptools" id="tools"></div>
+    <div class="list" id="list"></div>
+  </aside>
+  <section class="mapwrap">
+    <div id="map"></div>
+    <div class="mctl tl"><div class="vsw" id="viewSw"><button data-v="satellite" data-ic="globe" class="on"><span>Satellite</span></button><button data-v="street" data-ic="map"><span>Street</span></button><button data-v="blueprint" data-ic="blueprint"><span>Blueprint</span></button></div></div>
+    <div class="mctl br"><button class="mbtn" data-ic="plus" onclick="D.map.zoomIn()"></button><button class="mbtn" data-ic="minus" onclick="D.map.zoomOut()"></button></div>
+    <div class="savebar clean" id="savebar"><span class="msg" id="saveMsg">Not connected</span><button class="btn sm" id="btnReload" data-ic="refresh">Reload</button><button class="btn sm primary" id="btnSave" data-ic="save" disabled>Publish</button></div>
+  </section>
 </div>
-</section>
 
-<div class="row" style="margin-bottom:10px">
-<button class="p" id="commit" disabled>Save changes to GitHub</button>
-<button id="reload">Reload</button>
-</div>
-<div id="list"></div>
-</main>
+<!-- editor -->
+<div class="modal-bg" id="mEdit"><div class="modal" style="max-width:720px">
+  <div class="mhead"><div class="tt"><div class="k" id="eKick">Desk</div><b id="eTitle">Edit</b></div><button class="iconbtn" data-ic="x" onclick="D.closeEdit()"></button></div>
+  <div class="mbody" id="eBody"></div>
+  <div class="mfoot" id="eFoot"></div>
+</div></div>
 
+<!-- connection -->
+<div class="modal-bg" id="mCfg"><div class="modal" style="max-width:560px">
+  <div class="mhead"><div class="tt"><div class="k">Desk · connection</div><b>Connect to GitHub</b></div><button class="iconbtn" data-ic="x" onclick="D.closeCfg()"></button></div>
+  <div class="mbody">
+    <div class="grid2">
+      <div><label class="f">GitHub owner</label><input class="in" id="owner" placeholder="your-username"></div>
+      <div><label class="f">Repository</label><input class="in" id="repo" placeholder="lost-and-found"></div>
+      <div><label class="f">Data branch</label><input class="in" id="branch" value="data"></div>
+      <div><label class="f">Data file</label><input class="in" id="path" value="data/db.json"></div>
+    </div>
+    <label class="f">Fine-grained token <small>— Contents: read &amp; write, this repository only</small></label>
+    <input class="in" id="token" type="password" placeholder="github_pat_…" autocomplete="off">
+    <div class="hint">Stored only in this browser. Use the desk computer, not a shared one. Anyone with this token can edit the site — revoke it on GitHub if it leaks.</div>
+  </div>
+  <div class="mfoot"><button class="btn ghost danger" onclick="D.forget()">Forget token</button><span style="flex:1"></span><button class="btn dark" id="btnConnect">Connect &amp; load</button></div>
+</div></div>
+
+<div class="zoomer" id="zoomer" onclick="this.classList.remove('on')"><img alt=""></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="assets/core.js"></script>
 <script>
-const $ = id => document.getElementById(id);
-const FIELDS = ['owner','repo','branch','path','cloud','preset','token'];
-let items = [], sha = null, dirty = false;
+'use strict';
+const { $, $$, esc, ITEM_CATS, PLACE_CATS, STATUS, floorLabel, ago, img, toast } = LF;
+const CFG_FIELDS = ['owner', 'repo', 'branch', 'path', 'token'];
+// base64 in chunks (String.fromCharCode(...bigArray) overflows the call stack on large files)
+const b64 = bytes => { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000)); return btoa(s); };
 
-// ---------- settings ----------
-function loadCfg(){
-  const c = JSON.parse(localStorage.getItem('cfg') || '{}');
-  FIELDS.forEach(f => { if (c[f]) $(f).value = c[f]; });
-}
-function cfg(){ const c = {}; FIELDS.forEach(f => c[f] = $(f).value.trim()); return c; }
-function saveCfg(){ localStorage.setItem('cfg', JSON.stringify(cfg())); }
+const D = {
+  db: null, sha: null, dirty: 0, tab: 'inbox', q: '', istat: 'active', map: null, m: null, layers: {},
+  inbox: JSON.parse(localStorage.getItem('hanap.inbox') || '[]'),
 
-function status(msg, cls){ $('status').innerHTML = msg; $('status').className = cls || ''; }
-function setDirty(v){
-  dirty = v; $('commit').disabled = !v;
-  status(v ? '<span class="dirty">Unsaved changes. Press "Save changes to GitHub".</span>'
-           : '<span class="clean">Up to date with GitHub.</span>');
-}
+  async init() {
+    $$('[data-ic]').forEach(el => el.insertAdjacentHTML('afterbegin', LF.icon(el.dataset.ic)));
+    this.m = await LF.createMap($('#map'), { view: localStorage.getItem('hanap.view') || 'satellite', onBuilding: (f, ll) => this.buildingPop(f, ll) });
+    this.map = this.m.map;
+    this.layers.items = L.layerGroup().addTo(this.map);
+    this.layers.places = L.layerGroup().addTo(this.map);
+    $$('#viewSw button').forEach(b => { b.classList.toggle('on', b.dataset.v === this.map._lfView); b.onclick = () => { this.m.setView(b.dataset.v); $$('#viewSw button').forEach(x => x.classList.toggle('on', x === b)); }; });
+    $$('.tab').forEach(b => b.onclick = () => this.setTab(b.dataset.tab));
+    $('#q').oninput = e => { this.q = e.target.value; this.render(); };
+    $('#btnCfg').onclick = () => this.openCfg();
+    $('#btnConnect').onclick = () => { this.saveCfg(); this.closeCfg(); this.load(); };
+    $('#btnSave').onclick = () => this.commit();
+    $('#btnReload').onclick = () => { if (!this.dirty || confirm('Discard unsaved changes?')) this.load(); };
+    window.addEventListener('beforeunload', e => { if (this.dirty) { e.preventDefault(); e.returnValue = ''; } });
+    window.addEventListener('hashchange', () => this.takeHash());
+    document.addEventListener('click', e => {
+      const im = e.target.closest('[data-zoom]');
+      if (im) { $('#zoomer img').src = im.dataset.zoom; $('#zoomer').classList.add('on'); }
+    });
+    this.loadCfg();
+    await this.takeHash();
+    const c = this.cfg();
+    if (c.owner && c.repo && c.token) this.load(); else { this.db = LF.normalize({}); this.render(); this.openCfg(); }
+  },
 
-// ---------- GitHub API ----------
-const b64enc = s => btoa(String.fromCharCode(...new TextEncoder().encode(s)));
-const b64dec = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\n/g,'')), c => c.charCodeAt(0)));
+  // ── connection ──
+  loadCfg() {
+    const c = JSON.parse(localStorage.getItem('cfg') || '{}');
+    if (c.path && /items\.json$/.test(c.path)) c.path = 'data/db.json';     // old admin used items.json
+    if (!c.owner && LF.OWNER) { c.owner = LF.OWNER; c.repo = LF.REPO; }
+    CFG_FIELDS.forEach(f => { if (c[f]) $('#' + f).value = c[f]; });
+  },
+  cfg() { const c = {}; CFG_FIELDS.forEach(f => c[f] = $('#' + f).value.trim()); return c; },
+  saveCfg() { const old = JSON.parse(localStorage.getItem('cfg') || '{}'); localStorage.setItem('cfg', JSON.stringify({ ...old, ...this.cfg() })); },
+  openCfg() { $('#mCfg').classList.add('on'); },
+  closeCfg() { $('#mCfg').classList.remove('on'); },
+  forget() { $('#token').value = ''; this.saveCfg(); toast('Token removed from this browser', 'ok'); },
+  headers() { return { Authorization: `Bearer ${this.cfg().token}`, Accept: 'application/vnd.github+json' }; },
+  base() { const c = this.cfg(); return `https://api.github.com/repos/${c.owner}/${c.repo}`; },
 
-function api(path, opt = {}){
-  const c = cfg();
-  return fetch(`https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}${path}`, {
-    ...opt,
-    headers: { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json', ...(opt.headers || {}) }
-  });
-}
-
-async function ensureBranch(){
-  // create the data branch from the default branch if it does not exist
-  const c = cfg(), h = { Authorization: `Bearer ${c.token}`, Accept: 'application/vnd.github+json' };
-  const base = `https://api.github.com/repos/${c.owner}/${c.repo}`;
-  const r = await fetch(`${base}/branches/${c.branch}`, { headers: h });
-  if (r.ok) return;
-  const repo = await (await fetch(base, { headers: h })).json();
-  const def = await (await fetch(`${base}/git/ref/heads/${repo.default_branch}`, { headers: h })).json();
-  await fetch(`${base}/git/refs`, { method: 'POST', headers: h,
-    body: JSON.stringify({ ref: `refs/heads/${c.branch}`, sha: def.object.sha }) });
-}
-
-// READ
-async function load(){
-  try{
-    status('Loading...');
-    await ensureBranch();
-    const r = await api(`?ref=${cfg().branch}&t=${Date.now()}`);
-    if (r.status === 404){ items = []; sha = null; render(); setDirty(false); status('No data file yet. Add items, then save.'); return; }
+  async ensureBranch() {
+    const c = this.cfg(), h = this.headers();
+    const r = await fetch(`${this.base()}/branches/${c.branch}`, { headers: h });
+    if (r.ok) return;
+    if (r.status === 401) throw new Error('Token rejected (401)');
+    const repo = await (await fetch(this.base(), { headers: h })).json();
+    const def = await (await fetch(`${this.base()}/git/ref/heads/${repo.default_branch}`, { headers: h })).json();
+    const mk = await fetch(`${this.base()}/git/refs`, { method: 'POST', headers: h, body: JSON.stringify({ ref: `refs/heads/${c.branch}`, sha: def.object.sha }) });
+    if (!mk.ok) throw new Error(`Could not create the "${c.branch}" branch (${mk.status})`);
+  },
+  async getFile(path) {
+    const r = await fetch(`${this.base()}/contents/${path}?ref=${this.cfg().branch}&t=${Date.now()}`, { headers: this.headers() });
+    if (r.status === 404) return null;
     if (!r.ok) throw new Error(`GitHub ${r.status}`);
     const j = await r.json();
-    sha = j.sha;
-    items = JSON.parse(b64dec(j.content) || '[]');
-    render(); setDirty(false);
-  }catch(e){ status(`<span class="dirty">Load failed: ${e.message}</span>`); }
-}
+    return { sha: j.sha, text: new TextDecoder().decode(Uint8Array.from(atob(j.content.replace(/\n/g, '')), ch => ch.charCodeAt(0))) };
+  },
+  async load() {
+    try {
+      this.status('Loading…');
+      await this.ensureBranch();
+      let f = await this.getFile(this.cfg().path), migrated = false;
+      if (!f) {                                   // first run: wrap the old items.json
+        const old = await this.getFile(LF.LEGACY_FILE);
+        f = { sha: null, text: old ? old.text : '{}' }; migrated = !!old;
+      }
+      this.sha = f.sha;
+      this.db = LF.normalize(JSON.parse(f.text || '{}'));
+      $('#siteName').textContent = this.db.config.site_name;
+      this.m.drawLabels(this.db.places);
+      if (this.db.config.center) this.map.setView(this.db.config.center, this.db.config.zoom || 18);
+      this.setDirty(migrated ? 1 : 0);
+      if (migrated) toast('Imported the old items.json — press Save to create db.json', 'ok');
+      if (!f.sha && !migrated) this.status('No data yet — add places and items, then Save.');
+      this.render();
+    } catch (e) { this.status(`⚠️ ${e.message}`); toast(e.message, 'bad'); this.db = this.db || LF.normalize({}); this.render(); }
+  },
+  async commit() {
+    try {
+      $('#btnSave').disabled = true; this.status('Saving…');
+      const c = this.cfg();
+      const txt = JSON.stringify(this.db, null, 1);
+      const body = { message: `desk: ${this.db.items.length} items, ${this.db.places.length} places`, branch: c.branch,
+        content: b64(new TextEncoder().encode(txt)) };
+      if (this.sha) body.sha = this.sha;
+      const r = await fetch(`${this.base()}/contents/${c.path}`, { method: 'PUT', headers: this.headers(), body: JSON.stringify(body) });
+      if (r.status === 409 || r.status === 422) throw new Error('Someone else saved in the meantime — Reload, then redo your change.');
+      if (!r.ok) throw new Error(`GitHub ${r.status}`);
+      this.sha = (await r.json()).content.sha;
+      this.setDirty(0);
+      toast('Saved — the public site updates within a few minutes', 'ok');
+    } catch (e) { this.status(`⚠️ Save failed: ${e.message}`); $('#btnSave').disabled = false; toast(e.message, 'bad'); }
+  },
+  status(msg) { $('#saveMsg').textContent = msg; },
+  setDirty(n) {
+    this.dirty = n;
+    $('#savebar').classList.toggle('clean', !n);
+    $('#btnSave').disabled = !n;
+    this.status(n ? `${n} unsaved change${n > 1 ? 's' : ''} — press Save to publish` : (this.sha ? '✓ Published · up to date' : 'Connected'));
+  },
+  touch() { this.setDirty(this.dirty + 1); this.render(); },
 
-// WRITE (one commit for all pending changes)
-async function commit(){
-  try{
-    $('commit').disabled = true; status('Saving...');
-    const body = { message: `update items (${items.length})`, branch: cfg().branch,
-                   content: b64enc(JSON.stringify(items, null, 2)) };
-    if (sha) body.sha = sha;
-    const r = await api('', { method: 'PUT', body: JSON.stringify(body) });
-    if (r.status === 409 || r.status === 422) throw new Error('Data changed elsewhere. Press Reload, then redo your edit.');
-    if (!r.ok) throw new Error(`GitHub ${r.status}`);
-    sha = (await r.json()).content.sha;
-    setDirty(false);
-  }catch(e){ status(`<span class="dirty">Save failed: ${e.message}</span>`); $('commit').disabled = false; }
-}
+  // ── inbox (reports arrive as links / QR codes) ──
+  async takeHash() {
+    const m = location.hash.match(/submit=([A-Za-z0-9_-]+)/);
+    if (!m) return;
+    await this.addSubmission(m[1]);
+    history.replaceState(null, '', location.pathname);
+    this.setTab('inbox');
+  },
+  async addSubmission(code) {
+    try {
+      const s = await LF.decodeSubmission(code);
+      if (!s?.sid) throw new Error('Not a Hanap report');
+      if (this.inbox.some(x => x.sid === s.sid) || this.db?.items.some(i => i.sid === s.sid)) { toast('That report is already here', 'warn'); return; }
+      this.inbox.unshift({ ...s, received: new Date().toISOString() });
+      this.saveInbox(); toast(`New ${s.type} report: ${s.title}`, 'ok'); this.render();
+    } catch (e) { toast('Could not read that report: ' + e.message, 'bad'); }
+  },
+  saveInbox() { localStorage.setItem('hanap.inbox', JSON.stringify(this.inbox.slice(0, 200))); },
 
-// ---------- image upload (stores only a URL) ----------
-async function uploadImage(file){
-  const c = cfg();
-  if (!c.cloud || !c.preset) throw new Error('Add Cloudinary settings, or paste an image link instead.');
-  const fd = new FormData();
-  fd.append('file', file); fd.append('upload_preset', c.preset);
-  const r = await fetch(`https://api.cloudinary.com/v1_1/${c.cloud}/image/upload`, { method: 'POST', body: fd });
-  if (!r.ok) throw new Error('Image upload failed');
-  const j = await r.json();
-  // f_auto,q_auto,w_800 = smaller, faster images
-  return j.secure_url.replace('/upload/', '/upload/f_auto,q_auto,w_800/');
-}
-
-// ---------- CRUD (in memory, committed in batches) ----------
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-
-function render(){
-  $('list').innerHTML = items.length ? items.map(i => `
-    <div class="item">
-      ${i.image ? `<img src="${esc(i.image)}" alt="" loading="lazy">` : '<img alt="">'}
-      <div>
-        <h3>${esc(i.title)}</h3>
-        <p>${esc(i.note)}</p>
-        <div class="row">
-          <button data-edit="${i.id}">Edit</button>
-          <button class="d" data-del="${i.id}">Delete</button>
-        </div>
-      </div>
-    </div>`).join('') : '<small>No items yet.</small>';
-}
-
-function resetForm(){
-  ['editId','title','note','imgUrl','file'].forEach(f => $(f).value = '');
-  $('formTitle').textContent = 'Add item'; $('saveItem').textContent = 'Add'; $('cancel').hidden = true;
-  $('upmsg').firstChild.textContent = '';
-}
-
-async function saveItem(){
-  const title = $('title').value.trim();
-  if (!title) return alert('Title is required.');
-  $('saveItem').disabled = true;
-  try{
-    let image = $('imgUrl').value.trim();
-    const f = $('file').files[0];
-    if (f){ $('upmsg').firstChild.textContent = 'Uploading image...'; image = await uploadImage(f); }
-    const id = $('editId').value;
-    if (id){                                                  // UPDATE
-      const it = items.find(x => x.id === id);
-      Object.assign(it, { title, note: $('note').value.trim(), updated: new Date().toISOString() });
-      if (image) it.image = image;
-    } else {                                                  // CREATE
-      items.unshift({ id: crypto.randomUUID(), title, note: $('note').value.trim(), image,
-                      created: new Date().toISOString() });
+  // ── views ──
+  setTab(t) { this.tab = t; $$('.tab').forEach(b => b.classList.toggle('on', b.dataset.tab === t)); this.render(); },
+  render() {
+    if (!this.db) return;
+    $('#nInbox').textContent = this.inbox.filter(x => !x.done).length;
+    $('#nItems').textContent = this.db.items.filter(i => i.status === 'open').length;
+    $('#nPlaces').textContent = this.db.places.length;
+    this.renderMarkers();
+    const T = $('#tools'), L_ = $('#list');
+    if (this.tab === 'inbox') {
+      T.innerHTML = `<div class="row"><input class="in" id="paste" placeholder="Paste a report link or code from an email / chat" style="flex:1"><button class="btn primary" id="btnPaste">Add</button></div>
+        <div class="stat">Reports open here when you scan the reporter's QR code or click the link in their email. Contact details stay on this computer — they are never published.</div>`;
+      $('#btnPaste').onclick = () => { const v = $('#paste').value.trim(); if (v) this.addSubmission(v); };
+      const list = this.inbox.filter(x => !this.q || LF.matches(LF.itemText(x) + ' ' + (x.name || '') + ' ' + (x.contact || ''), this.q));
+      L_.innerHTML = list.length ? list.map(s => `<div class="ibox" style="margin-bottom:8px;${s.done ? 'opacity:.55' : ''}">
+          <div class="row" style="gap:6px"><span class="badge b-${s.type}">${s.type}</span>${s.done ? `<span class="badge st-returned">${esc(s.done)}</span>` : ''}<span class="stat" style="margin-left:auto">${ago(s.at)}</span></div>
+          <div class="row" style="gap:10px;margin-top:6px;align-items:flex-start;flex-wrap:nowrap">
+            ${s.image ? `<img src="${esc(LF.thumb(s.image, 160))}" data-zoom="${esc(s.image)}" alt="" loading="lazy" style="width:64px;height:64px;border-radius:10px;object-fit:cover;flex-shrink:0;cursor:zoom-in" onerror="this.onerror=null;this.src=this.dataset.zoom">` : ''}
+            <div style="min-width:0"><b>${esc(s.title)}</b><div class="stat">${esc((ITEM_CATS[s.category] || ITEM_CATS.other)[1])}${s.color ? ' · ' + esc(s.color) : ''}</div>
+              <div class="stat">${esc([s.building, floorLabel(s.floor), s.room, s.spot].filter(Boolean).join(' · ') || (s.lat ? 'pin on map' : 'no location'))}</div>
+              ${s.note ? `<div class="stat">${esc(s.note)}</div>` : ''}</div></div>
+          ${s.name || s.contact ? `<div class="private">${LF.icon('lock')} ${esc(s.name || 'Anonymous')}${s.contact ? ` · <a href="${/@/.test(s.contact) ? 'mailto:' : 'tel:'}${esc(s.contact)}">${esc(s.contact)}</a>` : ''}</div>` : ''}
+          <div class="btns" style="margin-top:9px">${s.done ? `<button class="btn sm ghost" data-del="${esc(s.sid)}">Remove</button>` : `
+            <button class="btn sm primary" data-acc="${esc(s.sid)}">${LF.icon('check')} Review &amp; post</button>
+            ${s.lat ? `<button class="btn sm" data-fly="${s.lat},${s.lng}">${LF.icon('pin')} Map</button>` : ''}
+            <button class="btn sm ghost danger" data-rej="${esc(s.sid)}">Dismiss</button>`}</div></div>`).join('')
+        : `<div class="empty">${LF.icon('inbox')}No reports waiting.<br><span class="stat">Reports from the public site land here — scan the reporter's QR code or open their link.</span></div>`;
+      $$('[data-acc]', L_).forEach(b => b.onclick = () => this.acceptSub(b.dataset.acc));
+      $$('[data-rej]', L_).forEach(b => b.onclick = () => { const s = this.inbox.find(x => x.sid === b.dataset.rej); s.done = 'dismissed'; this.saveInbox(); this.render(); });
+      $$('[data-del]', L_).forEach(b => b.onclick = () => { this.inbox = this.inbox.filter(x => x.sid !== b.dataset.del); this.saveInbox(); this.render(); });
+      $$('[data-fly]', L_).forEach(b => b.onclick = () => { const [a, c] = b.dataset.fly.split(','); this.map.flyTo([+a, +c], 20); });
     }
-    resetForm(); render(); setDirty(true);
-  }catch(e){ alert(e.message); }
-  $('saveItem').disabled = false;
-}
+    if (this.tab === 'items') {
+      T.innerHTML = `<div class="row"><div class="seg" id="iseg">${[['active', 'Active'], ['open', 'Unclaimed'], ['claimed', 'Pending'], ['returned', 'Returned'], ['archived', 'Archived'], ['', 'All']].map(([k, n]) => `<button data-s="${k}" class="${this.istat === k ? 'on' : ''}">${n}</button>`).join('')}</div>
+        <button class="btn sm primary" style="margin-left:auto" id="btnNewItem">${LF.icon('plus')} New item</button></div>`;
+      $$('#iseg button').forEach(b => b.onclick = () => { this.istat = b.dataset.s; this.render(); });
+      $('#btnNewItem').onclick = () => this.editItem(null);
+      const list = this.db.items.filter(i => (this.istat === 'active' ? ['open', 'claimed'].includes(i.status) : !this.istat || i.status === this.istat) && (!this.q || LF.matches(LF.itemText(i), this.q)))
+        .sort((a, b) => String(b.created || b.date).localeCompare(String(a.created || a.date)));
+      L_.innerHTML = list.length ? list.map(i => `<div class="rcard" data-id="${esc(i.id)}">
+          ${i.image ? `<img class="thumb" src="${esc(LF.thumb(i.image, 120))}" alt="" loading="lazy">` : `<div class="ic">${(ITEM_CATS[i.category] || ITEM_CATS.other)[0]}</div>`}
+          <div class="tx"><div class="row" style="gap:5px"><span class="badge b-${i.type}">${i.type}</span><span class="mono stat">${esc(i.ref)}</span>
+              <select class="stsel" data-st="${esc(i.id)}" style="margin-left:auto">${Object.entries(STATUS).map(([k, [n]]) => `<option value="${k}" ${i.status === k ? 'selected' : ''}>${n}</option>`).join('')}</select></div>
+            <b style="margin-top:3px">${esc(i.title)}</b><small>${esc([i.building, floorLabel(i.floor), i.room].filter(Boolean).join(' · ') || '—')} · ${ago(i.created || i.date)}${i.lat ? '' : ' · no map pin'}</small></div></div>`).join('')
+        : `<div class="empty">${LF.icon('grid')}No items here.</div>`;
+      $$('.rcard', L_).forEach(c => c.onclick = e => { if (!e.target.closest('select')) this.editItem(c.dataset.id); });
+      $$('[data-st]', L_).forEach(s => s.onchange = () => { const i = this.db.items.find(x => x.id === s.dataset.st); i.status = s.value; i.updated = new Date().toISOString(); this.touch(); });
+    }
+    if (this.tab === 'places') {
+      const unnamed = this.m.campus.features.filter(f => f.properties.kind === 'building' && !LF.buildingName(f, this.db.places));
+      T.innerHTML = `<div class="row"><button class="btn sm primary" id="btnNewPlace">${LF.icon('plus')} New place</button>
+        ${unnamed.length ? `<span class="stat"><b>${unnamed.length}</b> buildings on the map have no name yet — click one on the map to name it.</span>` : ''}</div>
+        <div class="stat">Drag a place's icon on the map to move it. Set one place's type to <b>Lost &amp; Found desk</b> — the site points students there.</div>`;
+      $('#btnNewPlace').onclick = () => this.editPlace(null);
+      const list = this.db.places.filter(p => !this.q || LF.matches(LF.placeText(p), this.q)).sort((a, b) => (b.category === 'desk') - (a.category === 'desk') || a.name.localeCompare(b.name));
+      L_.innerHTML = list.length ? list.map(p => `<div class="rcard ${p.category === 'desk' ? 'desk' : ''}" data-id="${esc(p.id)}"><div class="ic">${(PLACE_CATS[p.category] || PLACE_CATS.other)[0]}</div>
+          <div class="tx"><b>${esc(p.name)}</b><small>${esc([p.building, floorLabel(p.floor), p.room].filter(Boolean).join(' · ') || (PLACE_CATS[p.category] || PLACE_CATS.other)[1])}${p.lat ? '' : ' · no map pin'}</small></div></div>`).join('')
+        : `<div class="empty">${LF.icon('building')}No places yet. Start with the Lost &amp; Found desk, the registrar and the buildings.</div>`;
+      $$('.rcard', L_).forEach(c => c.onclick = () => this.editPlace(c.dataset.id));
+    }
+    if (this.tab === 'settings') {
+      const c = this.db.config;
+      T.innerHTML = '';
+      L_.innerHTML = `<div class="ibox">
+        <div class="grid2"><div><label class="f">Site name</label><input class="in" data-c="site_name" value="${esc(c.site_name)}"></div>
+          <div><label class="f">School</label><input class="in" data-c="school" value="${esc(c.school)}"></div></div>
+        <label class="f">Tagline</label><input class="in" data-c="tagline" value="${esc(c.tagline)}">
+        <div class="grid2"><div><label class="f">Desk e-mail <small>— reports are e-mailed here</small></label><input class="in" data-c="desk_email" value="${esc(c.desk_email)}" placeholder="lostandfound@qcu.edu.ph"></div>
+          <div><label class="f">Desk hours</label><input class="in" data-c="desk_hours" value="${esc(c.desk_hours)}"></div></div>
+        <label class="f">How to claim</label><textarea class="in" data-c="claim_text">${esc(c.claim_text)}</textarea>
+        <label class="f">Floors <small>— comma separated, lowest first</small></label><input class="in" data-c="floors" value="${esc((c.floors || []).join(', '))}">
+        <div class="grid2"><div><label class="f">Cloudinary cloud name <small>— optional photo uploads</small></label><input class="in" data-cl="cloud" value="${esc(c.cloudinary.cloud)}"></div>
+          <div><label class="f">Unsigned upload preset</label><input class="in" data-cl="preset" value="${esc(c.cloudinary.preset)}"></div></div>
+        <div class="hint">With Cloudinary set, students can upload photos straight from their phone (free tier: 25 GB). Without it they paste image links.</div>
+        <label class="f">Map start position</label>
+        <div class="row"><span class="stat mono">${(c.center || []).map(n => (+n).toFixed(5)).join(', ')} · zoom ${c.zoom}</span><button class="btn sm" id="btnCenter">${LF.icon('pin')} Use the current map view</button></div>
+        </div>`;
+      $$('[data-c]', L_).forEach(el => el.onchange = () => { c[el.dataset.c] = el.dataset.c === 'floors' ? el.value.split(',').map(s => s.trim()).filter(Boolean) : el.value.trim(); this.touch(); });
+      $$('[data-cl]', L_).forEach(el => el.onchange = () => { c.cloudinary[el.dataset.cl] = el.value.trim(); this.touch(); });
+      $('#btnCenter').onclick = () => { const ce = this.map.getCenter(); c.center = [+ce.lat.toFixed(6), +ce.lng.toFixed(6)]; c.zoom = this.map.getZoom(); this.touch(); };
+    }
+  },
+  renderMarkers() {
+    this.layers.items.clearLayers(); this.layers.places.clearLayers();
+    for (const p of this.db.places.filter(p => p.lat)) {
+      L.marker([p.lat, p.lng], { icon: LF.placeIcon(p), draggable: true, title: p.name })
+        .on('click', () => this.editPlace(p.id))
+        .on('dragend', e => { const ll = e.target.getLatLng(); p.lat = +ll.lat.toFixed(7); p.lng = +ll.lng.toFixed(7); this.touch(); toast(`Moved ${p.name}`, 'ok'); })
+        .addTo(this.layers.places);
+    }
+    for (const i of this.db.items.filter(i => i.lat && ['open', 'claimed'].includes(i.status))) {
+      L.marker([i.lat, i.lng], { icon: LF.pinIcon(i.type, (ITEM_CATS[i.category] || ITEM_CATS.other)[0], { small: true, photo: i.image }), title: i.title })
+        .on('click', () => this.editItem(i.id)).addTo(this.layers.items);
+    }
+    for (const s of this.inbox.filter(s => !s.done && s.lat)) {
+      L.marker([s.lat, s.lng], { icon: LF.pinIcon('done', '📥', { small: true }), title: 'Inbox: ' + s.title, opacity: .85 })
+        .on('click', () => this.acceptSub(s.sid)).addTo(this.layers.items);
+    }
+  },
+  buildingPop(f, ll) {
+    const name = LF.buildingName(f, this.db?.places || []);
+    L.popup().setLatLng(ll).setContent(`<div class="bpop"><span class="k">Building</span><b>${esc(name || 'Unnamed building')}</b>
+      <div class="row"><button class="btn sm primary" id="bpName">${LF.icon('edit')} ${name ? 'Edit' : 'Name it'}</button><button class="btn sm" id="bpPlace">${LF.icon('plus')} Place here</button></div></div>`).openOn(this.map);
+    setTimeout(() => {
+      $('#bpName').onclick = () => {
+        this.map.closePopup();
+        const ring = f.geometry.coordinates[0];
+        const p = this.db.places.find(p => p.category === 'building' && p.lat && LF.inPoly(p.lat, p.lng, ring));
+        if (p) return this.editPlace(p.id);
+        const lat = ring.reduce((a, q) => a + q[1], 0) / ring.length, lng = ring.reduce((a, q) => a + q[0], 0) / ring.length;
+        this.editPlace(null, { category: 'building', lat, lng, name: f.properties.name || '' });
+      };
+      $('#bpPlace').onclick = () => { this.map.closePopup(); this.editPlace(null, { lat: ll.lat, lng: ll.lng, building: name }); };
+    }, 0);
+  },
 
-$('list').addEventListener('click', e => {
-  const ed = e.target.dataset.edit, del = e.target.dataset.del;
-  if (ed){                                                     // start UPDATE
-    const it = items.find(x => x.id === ed);
-    $('editId').value = it.id; $('title').value = it.title; $('note').value = it.note || '';
-    $('imgUrl').value = it.image || '';
-    $('formTitle').textContent = 'Edit item'; $('saveItem').textContent = 'Update'; $('cancel').hidden = false;
-    scrollTo({ top: 0, behavior: 'smooth' });
-  }
-  if (del && confirm('Delete this item?')){                    // DELETE
-    items = items.filter(x => x.id !== del); render(); setDirty(true);
-  }
-});
-
-$('saveItem').onclick = saveItem;
-$('cancel').onclick = resetForm;
-$('commit').onclick = commit;
-$('reload').onclick = () => { if (!dirty || confirm('Discard unsaved changes?')) load(); };
-$('connect').onclick = () => { saveCfg(); $('cfg').open = false; load(); };
-window.addEventListener('beforeunload', e => { if (dirty){ e.preventDefault(); e.returnValue = ''; } });
-
-loadCfg();
-if (cfg().owner && cfg().repo && cfg().token) load(); else $('cfg').open = true;
+  // ── editors ──
+  closeEdit() { $('#mEdit').classList.remove('on'); },
+  acceptSub(sid) {
+    const s = this.inbox.find(x => x.sid === sid);
+    if (!s) return;
+    const { name, contact, received, v, at, ...pub } = s;
+    this.editItem(null, { ...pub, created: new Date().toISOString() }, sid);
+  },
+  editItem(id, prefill, fromSid) {
+    const it = id ? this.db.items.find(x => x.id === id) : { id: LF.uid(), type: 'found', status: 'open', category: 'other', date: new Date().toISOString().slice(0, 10), ...prefill };
+    if (!it.ref) it.ref = LF.shortRef(it.type);
+    const floors = this.db.config.floors || [];
+    $('#eKick').textContent = id ? `Item · ${it.ref}` : fromSid ? `Report → item · ${it.ref}` : 'New item';
+    $('#eTitle').textContent = id ? (it.title || 'Edit item') : fromSid ? 'Review and post' : 'Add a found or lost item';
+    $('#eBody').innerHTML = `
+      <div class="grid3">
+        <div><label class="f">Type</label><select class="in" id="fType"><option value="found">Found</option><option value="lost">Lost</option></select></div>
+        <div><label class="f">Status</label><select class="in" id="fStatus">${Object.entries(STATUS).map(([k, [n]]) => `<option value="${k}">${n}</option>`).join('')}</select></div>
+        <div><label class="f">Reference</label><input class="in mono" id="fRef" value="${esc(it.ref)}"></div>
+      </div>
+      <label class="f">Title *</label><input class="in" id="fTitle" value="${esc(it.title || '')}" maxlength="70">
+      <div class="grid3">
+        <div><label class="f">Category</label><select class="in" id="fCat">${Object.entries(ITEM_CATS).map(([k, [e, n]]) => `<option value="${k}">${e} ${n}</option>`).join('')}</select></div>
+        <div><label class="f">Color</label><input class="in" id="fColor" value="${esc(it.color || '')}"></div>
+        <div><label class="f">Date</label><input class="in" type="date" id="fDate" value="${esc(it.date || '')}"></div>
+      </div>
+      <label class="f">Public description <small>— never include ID / card numbers or names written on the item</small></label>
+      <textarea class="in" id="fNote">${esc(it.note || '')}</textarea>
+      <label class="f">Photo link</label>
+      <div class="photo"><div class="pv" id="fPv">${it.image ? `<img src="${esc(LF.thumb(it.image, 200))}">` : LF.icon('camera')}</div>
+        <div style="flex:1"><input class="in" id="fImg" value="${esc(it.image || '')}" placeholder="https://…">
+          ${this.db.config.cloudinary.cloud ? `<div class="row" style="margin-top:6px"><label class="btn sm" style="cursor:pointer">${LF.icon('upload')} Upload photo<input type="file" accept="image/*" id="fFile" hidden></label><span class="hint" id="fUp"></span></div>` : ''}</div></div>
+      <label class="f">Where</label>
+      <div class="picker" id="fPicker"></div><div class="detected" id="fDet"></div>
+      <div class="grid3">
+        <div><label class="f">Building</label><input class="in" id="fBld" list="bl" value="${esc(it.building || '')}"><datalist id="bl">${this.db.places.filter(p => p.category === 'building').map(p => `<option value="${esc(p.name)}">`).join('')}</datalist></div>
+        <div><label class="f">Floor</label><select class="in" id="fFloor"><option value="">—</option>${floors.map(f => `<option value="${esc(f)}">${esc(floorLabel(f))}</option>`).join('')}<option value="outside">Outside</option></select></div>
+        <div><label class="f">Room / area</label><input class="in" id="fRoom" value="${esc(it.room || '')}"></div>
+      </div>
+      <label class="f">Exact spot</label><input class="in" id="fSpot" value="${esc(it.spot || '')}">`;
+    $('#fType').value = it.type; $('#fStatus').value = it.status; $('#fCat').value = it.category || 'other'; $('#fFloor').value = it.floor || '';
+    $('#fImg').oninput = e => { const u = e.target.value.trim(); $('#fPv').innerHTML = u ? `<img src="${esc(LF.thumb(u, 200))}">` : LF.icon('camera'); };
+    if ($('#fFile')) $('#fFile').onchange = async () => {
+      $('#fUp').textContent = 'Uploading…';
+      try { const u = await LF.uploadImage($('#fFile').files[0], this.db.config); $('#fImg').value = u; $('#fImg').oninput({ target: $('#fImg') }); $('#fUp').textContent = '✓'; }
+      catch (e) { $('#fUp').textContent = e.message; }
+    };
+    let pos = { lat: it.lat, lng: it.lng }, autoB = !it.building;
+    $('#fBld').oninput = () => autoB = false;
+    LF.makePicker($('#fPicker'), { lat: it.lat || this.map.getCenter().lat, lng: it.lng || this.map.getCenter().lng, places: this.db.places, view: this.map._lfView,
+      onChange: ({ lat, lng, building }) => { pos = { lat, lng }; if (autoB && building?.name) $('#fBld').value = building.name; $('#fDet').innerHTML = building ? `${LF.icon('building')} ${esc(building.name || 'Unnamed building')}` : `${LF.icon('pin')} Outside a building`; } });
+    $('#eFoot').innerHTML = `${id ? `<button class="btn ghost danger" id="fDel">${LF.icon('trash')} Delete</button>` : ''}<span style="flex:1"></span><button class="btn ghost" onclick="D.closeEdit()">Cancel</button><button class="btn primary" id="fOk">${id ? 'Update' : fromSid ? 'Post item' : 'Add item'}</button>`;
+    if ($('#fDel')) $('#fDel').onclick = () => { if (!confirm('Delete this item? (Use status “Archived” to hide it but keep the record.)')) return; this.db.items = this.db.items.filter(x => x.id !== it.id); this.closeEdit(); this.touch(); };
+    $('#fOk').onclick = () => {
+      const title = $('#fTitle').value.trim();
+      if (!title) return toast('Title is required', 'warn');
+      Object.assign(it, {
+        type: $('#fType').value, status: $('#fStatus').value, ref: $('#fRef').value.trim() || it.ref, title, category: $('#fCat').value,
+        color: $('#fColor').value.trim(), date: $('#fDate').value, note: $('#fNote').value.trim(), image: $('#fImg').value.trim(),
+        building: $('#fBld').value.trim(), floor: $('#fFloor').value, room: $('#fRoom').value.trim(), spot: $('#fSpot').value.trim(),
+        lat: pos.lat, lng: pos.lng, updated: new Date().toISOString(),
+      });
+      for (const k of Object.keys(it)) if (it[k] === '' || it[k] === undefined) delete it[k];
+      if (!id) { it.created = it.created || new Date().toISOString(); if (fromSid) it.sid = fromSid; this.db.items.unshift(it); }
+      if (fromSid) { const s = this.inbox.find(x => x.sid === fromSid); if (s) { s.done = 'posted ' + it.ref; this.saveInbox(); } }
+      this.closeEdit(); this.touch();
+      toast(`${it.ref} ${id ? 'updated' : 'added'} — press Save to publish`, 'ok');
+    };
+    $('#mEdit').classList.add('on');
+  },
+  editPlace(id, prefill = {}) {
+    const p = id ? this.db.places.find(x => x.id === id) : { id: 'p' + LF.uid().slice(0, 8), category: 'office', name: '', ...prefill };
+    const floors = this.db.config.floors || [];
+    $('#eKick').textContent = id ? 'Place' : 'New place';
+    $('#eTitle').textContent = id ? p.name : 'Add a campus place';
+    $('#eBody').innerHTML = `
+      <div class="grid2"><div><label class="f">Name *</label><input class="in" id="pName" value="${esc(p.name)}" placeholder="e.g. Registrar's Office"></div>
+        <div><label class="f">Type</label><select class="in" id="pCat">${Object.entries(PLACE_CATS).map(([k, [e, n]]) => `<option value="${k}">${e} ${n}</option>`).join('')}</select></div></div>
+      <label class="f">Also known as <small>— helps search, e.g. “CR, comfort room”</small></label><input class="in" id="pAka" value="${esc(p.aliases || '')}">
+      <div class="grid3">
+        <div><label class="f">Building</label><input class="in" id="pBld" list="bl2" value="${esc(p.building || '')}"><datalist id="bl2">${this.db.places.filter(x => x.category === 'building').map(x => `<option value="${esc(x.name)}">`).join('')}</datalist></div>
+        <div><label class="f">Floor</label><select class="in" id="pFloor"><option value="">—</option>${floors.map(f => `<option value="${esc(f)}">${esc(floorLabel(f))}</option>`).join('')}</select></div>
+        <div><label class="f">Room</label><input class="in" id="pRoom" value="${esc(p.room || '')}"></div>
+      </div>
+      <div class="grid2"><div><label class="f">Hours</label><input class="in" id="pHours" value="${esc(p.hours || '')}" placeholder="Mon–Fri 8–5"></div>
+        <div><label class="f">Photo link</label><input class="in" id="pImg" value="${esc(p.image || '')}" placeholder="https://…"></div></div>
+      <label class="f">Notes / directions</label><textarea class="in" id="pNote" placeholder="e.g. Left of the main stairs, beside the cashier">${esc(p.note || '')}</textarea>
+      <label class="f">Location</label><div class="picker" id="pPicker"></div><div class="detected" id="pDet"></div>`;
+    $('#pCat').value = p.category; $('#pFloor').value = p.floor || '';
+    let pos = { lat: p.lat, lng: p.lng }, autoB = !p.building;
+    $('#pBld').oninput = () => autoB = false;
+    LF.makePicker($('#pPicker'), { lat: p.lat || this.map.getCenter().lat, lng: p.lng || this.map.getCenter().lng, places: this.db.places, view: this.map._lfView,
+      onChange: ({ lat, lng, building }) => { pos = { lat, lng }; if (autoB && building?.name && $('#pCat').value !== 'building') $('#pBld').value = building.name; $('#pDet').innerHTML = building ? `${LF.icon('building')} ${esc(building.name || 'Unnamed building')}` : `${LF.icon('pin')} Outside a building`; } });
+    $('#eFoot').innerHTML = `${id ? `<button class="btn ghost danger" id="pDel">${LF.icon('trash')} Delete</button>` : ''}<span style="flex:1"></span><button class="btn ghost" onclick="D.closeEdit()">Cancel</button><button class="btn primary" id="pOk">${id ? 'Update' : 'Add place'}</button>`;
+    if ($('#pDel')) $('#pDel').onclick = () => { if (!confirm(`Delete ${p.name}?`)) return; this.db.places = this.db.places.filter(x => x.id !== p.id); this.closeEdit(); this.m.drawLabels(this.db.places); this.touch(); };
+    $('#pOk').onclick = () => {
+      const name = $('#pName').value.trim();
+      if (!name) return toast('Name is required', 'warn');
+      if ($('#pCat').value === 'desk' && this.db.places.some(x => x.category === 'desk' && x.id !== p.id)) toast('Note: there is now more than one Lost & Found desk', 'warn');
+      Object.assign(p, { name, category: $('#pCat').value, aliases: $('#pAka').value.trim(), building: $('#pBld').value.trim(), floor: $('#pFloor').value,
+        room: $('#pRoom').value.trim(), hours: $('#pHours').value.trim(), image: $('#pImg').value.trim(), note: $('#pNote').value.trim(), lat: pos.lat, lng: pos.lng });
+      for (const k of Object.keys(p)) if (p[k] === '' || p[k] === undefined) delete p[k];
+      if (!id) this.db.places.push(p);
+      this.closeEdit(); this.m.drawLabels(this.db.places); this.touch();
+      toast(`${p.name} saved — press Save to publish`, 'ok');
+    };
+    $('#mEdit').classList.add('on');
+  },
+};
+D.init();
 </script>
 </body>
 </html>
