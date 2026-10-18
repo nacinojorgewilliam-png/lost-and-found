@@ -327,7 +327,12 @@ textarea.in{height:auto;padding:10px 12px;resize:vertical;min-height:70px}
 :root{--sheet:56%}
 @media (max-width:860px){
   .top{padding:0 10px;gap:8px}
-  .brand .brand-k,.brand .brand-t,.brand .brand-by,.top .hide-m{display:none}
+  .brand .brand-t,.top .hide-m,.top .demo-tag,.top .sp{display:none}
+  .brand{gap:8px}
+  .brand-k{font-size:8.5px;letter-spacing:.18em}
+  .brand-by{font-size:10.5px;margin-top:1px}
+  .gsearch{min-width:0}
+  .gsearch input{min-width:0}
   .app{bottom:60px}
   /* split view: map on top, list / details as a bottom sheet */
   .mapwrap{position:absolute;inset:0;transition:bottom .25s}
