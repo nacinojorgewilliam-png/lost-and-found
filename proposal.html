@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hanap QCU · Proposal</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%23ff6b1a'/><stop offset='1' stop-color='%23ffc24a'/></linearGradient></defs><rect width='32' height='32' rx='9' fill='url(%23g)'/><circle cx='14' cy='14' r='6' fill='none' stroke='%23050b18' stroke-width='3'/><path d='M18.5 18.5 24 24' stroke='%23050b18' stroke-width='3' stroke-linecap='round'/></svg>">
+<style>
+  :root {
+    --ink: #050b18; --ink2: #0a1426; --ink3: #111f3a; --flame: #ff6b1a; --gold: #ffc24a; --mint: #25d0a0; --rose: #ff4d6d; --sky: #4db8ff; --violet: #a888ff;
+    --t1: rgba(255,255,255,.95); --t2: rgba(255,255,255,.72); --t3: rgba(255,255,255,.5); --bd: rgba(255,255,255,.09); --bd2: rgba(255,255,255,.16);
+    --mono: 'Cascadia Code', 'Consolas', 'SF Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; background: var(--ink); color: var(--t1); font-family: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
+  .mono { font-family: var(--mono); }
+  em { font-style: normal; background: linear-gradient(90deg, var(--flame), var(--gold)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  /* deck */
+  .deck { position: fixed; inset: 0; }
+  .slide { position: absolute; inset: 0; padding: 70px 7vw 90px; display: flex; flex-direction: column; justify-content: center; opacity: 0; pointer-events: none;
+    transform: translateX(40px); transition: opacity .45s, transform .45s;
+    background: radial-gradient(ellipse 55% 60% at 100% 0%, rgba(255,194,74,.12), transparent 60%), radial-gradient(ellipse 55% 60% at 0% 0%, rgba(255,107,26,.14), transparent 60%), var(--ink); }
+  .slide.on { opacity: 1; pointer-events: auto; transform: none; }
+  .slide.past { transform: translateX(-40px); }
+  .slide::before { content: ''; position: absolute; inset: 0; pointer-events: none;
+    background-image: linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+    background-size: 44px 44px; mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%); }
+  .inner { position: relative; width: 100%; max-width: 1180px; margin: 0 auto; }
+  .k { font: 800 11px var(--mono); letter-spacing: .26em; color: var(--flame); text-transform: uppercase; display: flex; align-items: center; gap: 12px; }
+  .k::after { content: ''; height: 1px; width: 70px; background: linear-gradient(90deg, var(--flame), transparent); }
+  h1 { font-size: clamp(38px, 5.2vw, 74px); line-height: 1.02; font-weight: 800; letter-spacing: -.03em; margin: 14px 0 18px; }
+  h2 { font-size: clamp(30px, 4.2vw, 54px); line-height: 1.06; font-weight: 800; letter-spacing: -.025em; margin: 12px 0 14px; }
+  .lead { font-size: clamp(16px, 1.6vw, 21px); line-height: 1.5; color: var(--t2); max-width: 760px; }
+  .grid { display: grid; gap: 14px; margin-top: 26px; }
+  .g2 { grid-template-columns: 1fr 1fr; } .g3 { grid-template-columns: repeat(3, 1fr); } .g4 { grid-template-columns: repeat(4, 1fr); }
+  .split { display: grid; grid-template-columns: 1.05fr 1fr; gap: 46px; align-items: center; }
+  .card { background: var(--ink2); border: 1px solid var(--bd); border-radius: 16px; padding: 18px 18px 16px; position: relative; overflow: hidden; }
+  .card.t { border-top: 3px solid var(--c, var(--flame)); }
+  .card .ic { font-size: 26px; margin-bottom: 8px; }
+  .card b { display: block; font-size: 17px; margin-bottom: 5px; letter-spacing: -.01em; }
+  .card p { font-size: 14px; line-height: 1.5; color: var(--t2); }
+  .tag { display: inline-block; font: 800 9.5px var(--mono); letter-spacing: .12em; padding: 3px 7px; border-radius: 5px; margin-top: 10px; }
+  .tag.now { background: rgba(37,208,160,.14); color: var(--mint); }
+  .tag.next { background: rgba(255,194,74,.16); color: var(--gold); }
+  .card .tag { position: absolute; top: 14px; right: 14px; margin: 0; }
+  .vs { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 24px; }
+  .vs > div { border-radius: 16px; padding: 18px 20px; }
+  .vs .b { background: rgba(255,77,109,.10); border: 1px solid rgba(255,77,109,.22); }
+  .vs .a { background: rgba(37,208,160,.10); border: 1px solid rgba(37,208,160,.22); }
+  .vs small { display: block; font: 800 10px var(--mono); letter-spacing: .18em; margin-bottom: 10px; }
+  .vs .b small { color: var(--rose); } .vs .a small { color: var(--mint); }
+  .vs li { list-style: none; font-size: 15px; line-height: 1.45; padding: 6px 0 6px 26px; position: relative; color: var(--t1); }
+  .vs .b li::before { content: '✕'; position: absolute; left: 0; color: var(--rose); font-weight: 800; }
+  .vs .a li::before { content: '✓'; position: absolute; left: 0; color: var(--mint); font-weight: 800; }
+  .flow { display: flex; align-items: stretch; gap: 0; margin-top: 28px; }
+  .flow .st { flex: 1; background: var(--ink2); border: 1px solid var(--bd); border-radius: 16px; padding: 18px; position: relative; }
+  .flow .st + .st { margin-left: 26px; }
+  .flow .st + .st::before { content: '→'; position: absolute; left: -22px; top: 50%; transform: translateY(-50%); color: var(--flame); font-size: 20px; font-weight: 800; }
+  .flow .n { font: 800 34px var(--mono); line-height: 1; } .flow .n em { display: inline-block; }
+  .flow b { display: block; font-size: 17px; margin: 8px 0 6px; } .flow p { font-size: 14px; line-height: 1.5; color: var(--t2); }
+  .quote { border-left: 4px solid var(--flame); padding: 6px 0 6px 18px; font-size: clamp(17px, 1.8vw, 23px); line-height: 1.45; color: var(--t1); max-width: 820px; margin-top: 22px; }
+  .quote small { display: block; font-size: 13px; color: var(--t3); margin-top: 6px; }
+  .bubbles { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; max-width: 900px; }
+  .bubble { background: var(--ink2); border: 1px solid var(--bd2); border-radius: 18px 18px 18px 4px; padding: 10px 14px; font-size: 15px; color: var(--t1); animation: pop .5s both; }
+  .bubble:nth-child(2n) { border-radius: 18px 18px 4px 18px; background: var(--ink3); }
+  .slide.on .bubble { animation-delay: calc(var(--i) * 90ms); }
+  @keyframes pop { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+  .big { font: 800 clamp(48px, 7vw, 92px)/1 var(--mono); letter-spacing: -.04em; }
+  .metric { background: var(--ink2); border: 1px solid var(--bd); border-radius: 16px; padding: 18px; }
+  .metric .big { font-size: 40px; }
+  .metric b { display: block; font-size: 16px; margin: 8px 0 4px; } .metric p { font-size: 13.5px; color: var(--t2); line-height: 1.45; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .chip { font-size: 13px; padding: 6px 12px; border-radius: 99px; border: 1px solid var(--bd2); color: var(--t2); background: rgba(255,255,255,.03); }
+  .chip.on { border-color: var(--flame); color: #fff; background: rgba(255,107,26,.14); }
+
+  /* phone mock */
+  .phone { width: 300px; height: 590px; border-radius: 40px; background: #000; padding: 12px; margin: 0 auto; box-shadow: 0 40px 80px -30px rgba(0,0,0,.8), 0 0 0 1px rgba(255,255,255,.12) inset; position: relative; }
+  .scr { width: 100%; height: 100%; border-radius: 30px; overflow: hidden; background: #f7f3ec; color: #0a1426; display: flex; flex-direction: column; font-size: 11px; }
+  .ph-top { background: var(--ink); color: #fff; padding: 12px 12px 10px; display: flex; gap: 8px; align-items: center; }
+  .ph-top .lg { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, var(--flame), var(--gold)); color: var(--ink); font: 900 8px var(--mono); display: grid; place-items: center; }
+  .ph-top .sr { flex: 1; height: 24px; border-radius: 7px; background: rgba(255,255,255,.1); color: rgba(255,255,255,.5); display: flex; align-items: center; padding: 0 8px; font-size: 10px; }
+  .ph-map { height: 46%; position: relative; background: #2b3a2f; overflow: hidden;
+    background-image: radial-gradient(circle at 30% 40%, #3f5a43 0 18%, transparent 19%), radial-gradient(circle at 70% 60%, #385241 0 22%, transparent 23%), linear-gradient(135deg, #263529, #34483a); }
+  .bld { position: absolute; border: 1.5px solid var(--gold); background: rgba(255,194,74,.12); border-radius: 3px; }
+  .pin { position: absolute; width: 26px; height: 26px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); display: grid; place-items: center; border: 2px solid #fff; box-shadow: 0 4px 10px rgba(0,0,0,.4); animation: drop .6s both; }
+  .pin span { transform: rotate(45deg); font-size: 11px; }
+  .slide.on .pin { animation-delay: calc(var(--i) * 140ms + 200ms); }
+  @keyframes drop { from { opacity: 0; transform: rotate(-45deg) translate(-10px, -18px); } }
+  .ph-sheet { flex: 1; background: #fff; border-radius: 14px 14px 0 0; margin-top: -10px; position: relative; padding: 10px; display: flex; flex-direction: column; gap: 7px; }
+  .ph-sheet .grab { width: 34px; height: 4px; border-radius: 4px; background: #ddd; margin: 0 auto 2px; }
+  .stories { display: flex; gap: 7px; }
+  .story { width: 38px; text-align: center; font-size: 8px; color: #4a5773; }
+  .story i { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; margin: 0 auto 2px; font-style: normal; font-size: 14px; background: #fff;
+    box-shadow: 0 0 0 2px #fff, 0 0 0 4px var(--flame); }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .tile { border-radius: 9px; overflow: hidden; border: 1px solid #eee; }
+  .tile .im { height: 52px; display: grid; place-items: center; font-size: 22px; background: #f2ece1; position: relative; }
+  .tile .im .bd { position: absolute; top: 4px; left: 4px; font: 800 7px var(--mono); padding: 2px 4px; border-radius: 3px; background: var(--mint); color: #053; }
+  .tile .tx { padding: 4px 6px 6px; font-weight: 700; font-size: 9.5px; }
+  .tile .tx small { display: block; font-weight: 400; color: #6b7690; font-size: 8px; margin-top: 1px; }
+  .ph-nav { height: 40px; display: flex; justify-content: space-around; align-items: center; border-top: 1px solid #eee; background: #fff; font-size: 8px; color: #6b7690; }
+  .ph-nav .rep { width: 30px; height: 30px; border-radius: 10px; background: linear-gradient(135deg, var(--flame), #f25f10); color: #fff; display: grid; place-items: center; font-size: 16px; margin-top: -14px; }
+
+  /* desk inbox mock */
+  .inbox { background: #fbf7f0; color: #0a1426; border-radius: 16px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(0,0,0,.8); }
+  .inbox .hd { background: var(--ink); color: #fff; padding: 12px 14px; font-weight: 700; display: flex; align-items: center; gap: 8px; font-size: 14px; }
+  .inbox .hd span { margin-left: auto; font: 800 10px var(--mono); background: var(--flame); color: var(--ink); padding: 2px 7px; border-radius: 99px; }
+  .row { display: flex; gap: 10px; align-items: center; padding: 11px 14px; border-top: 1px solid rgba(10,20,38,.08); font-size: 13px; animation: pop .5s both; }
+  .slide.on .row { animation-delay: calc(var(--i) * 120ms + 150ms); }
+  .row .e { width: 34px; height: 34px; border-radius: 9px; background: #f2ece1; display: grid; place-items: center; font-size: 17px; flex-shrink: 0; }
+  .row b { display: block; font-size: 13px; } .row small { color: #6b7690; font-size: 11.5px; }
+  .row .btn { margin-left: auto; font: 700 11px 'Segoe UI', sans-serif; padding: 6px 10px; border-radius: 8px; background: linear-gradient(135deg, var(--flame), #f25f10); color: #fff; white-space: nowrap; }
+  .row .btn.g { background: #e9f8f2; color: #0e9f77; }
+
+  /* community flow */
+  .loop { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 26px; }
+  .loop .st { background: var(--ink2); border: 1px solid var(--bd); border-radius: 16px; padding: 16px; text-align: center; position: relative; }
+  .loop .st .ic { font-size: 30px; } .loop .st b { display: block; margin: 8px 0 4px; font-size: 15px; } .loop .st p { font-size: 13px; color: var(--t2); line-height: 1.45; }
+  .loop .st:not(:last-child)::after { content: '→'; position: absolute; right: -11px; top: 44%; color: var(--flame); font-weight: 800; }
+
+  /* roadmap */
+  .road { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 28px; position: relative; }
+  .road::before { content: ''; position: absolute; left: 0; right: 0; top: 13px; height: 2px; background: linear-gradient(90deg, var(--mint), var(--flame), var(--gold), rgba(255,255,255,.15)); }
+  .phase { position: relative; padding-top: 34px; }
+  .phase::before { content: ''; position: absolute; top: 6px; left: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--c); box-shadow: 0 0 0 4px var(--ink), 0 0 16px var(--c); }
+  .phase .k2 { font: 800 10px var(--mono); letter-spacing: .18em; color: var(--c); }
+  .phase b { display: block; font-size: 18px; margin: 6px 0 8px; }
+  .phase li { list-style: none; font-size: 13.5px; color: var(--t2); line-height: 1.45; padding: 3px 0 3px 14px; position: relative; }
+  .phase li::before { content: '·'; position: absolute; left: 2px; color: var(--c); font-weight: 900; }
+
+  /* uses grid */
+  .uses { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: 22px; }
+  .use { background: var(--ink2); border: 1px solid var(--bd); border-radius: 14px; padding: 13px 14px; transition: transform .15s, border-color .15s; cursor: default; }
+  .use:hover { transform: translateY(-3px); border-color: var(--flame); }
+  .use .ic { font-size: 22px; } .use b { display: block; font-size: 14.5px; margin: 6px 0 3px; } .use p { font-size: 12.5px; color: var(--t2); line-height: 1.4; }
+
+  /* chrome */
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 24px; z-index: 10;
+    background: linear-gradient(0deg, rgba(5,11,24,.95), rgba(5,11,24,0)); }
+  .brand { display: flex; align-items: center; gap: 9px; font-size: 12px; color: var(--t3); }
+  .brand .lg { width: 24px; height: 24px; border-radius: 7px; background: linear-gradient(135deg, var(--flame), var(--gold)); color: var(--ink); font: 900 8px var(--mono); display: grid; place-items: center; }
+  .brand b { color: var(--t2); }
+  .sp { flex: 1; }
+  .nb { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--bd2); background: rgba(255,255,255,.05); color: var(--t1); cursor: pointer; font-size: 15px; }
+  .nb:hover { background: rgba(255,255,255,.12); }
+  .count { font: 12px var(--mono); color: var(--t3); min-width: 54px; text-align: center; }
+  .prog { position: fixed; top: 0; left: 0; height: 3px; background: linear-gradient(90deg, var(--flame), var(--gold)); z-index: 11; transition: width .4s; }
+  .hint { position: fixed; top: 14px; right: 20px; font: 11px var(--mono); color: var(--t3); z-index: 10; }
+  .hint kbd { border: 1px solid var(--bd2); border-radius: 4px; padding: 1px 5px; margin: 0 2px; }
+
+  /* overview */
+  .ov { position: fixed; inset: 0; z-index: 30; background: rgba(5,11,24,.97); padding: 40px; overflow: auto; display: none; }
+  .ov.on { display: block; }
+  .ov h3 { font: 800 12px var(--mono); letter-spacing: .24em; color: var(--flame); margin-bottom: 18px; }
+  .ovg { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .ovg button { text-align: left; background: var(--ink2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px; color: var(--t1); cursor: pointer; font: inherit; }
+  .ovg button:hover, .ovg button.cur { border-color: var(--flame); }
+  .ovg small { font: 800 10px var(--mono); color: var(--flame); letter-spacing: .14em; } .ovg b { display: block; font-size: 15px; margin-top: 5px; }
+
+  @media (max-width: 900px) {
+    .slide { padding: 60px 22px 80px; justify-content: flex-start; overflow-y: auto; }
+    .split, .g2, .g3, .g4, .vs, .uses, .loop, .road { grid-template-columns: 1fr; }
+    .flow { flex-direction: column; } .flow .st + .st { margin: 22px 0 0; } .flow .st + .st::before { content: '↓'; left: 50%; top: -20px; transform: none; }
+    .phone { transform: scale(.85); }
+  }
+  @media print {
+    html, body { overflow: visible; height: auto; } .deck { position: static; }
+    .slide { position: relative; opacity: 1; transform: none; height: 100vh; page-break-after: always; }
+    .bar, .prog, .hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="prog" id="prog"></div>
+<div class="hint">← → to move · <kbd>O</kbd> overview · <kbd>F</kbd> full screen</div>
+
+<div class="deck" id="deck">
+
+  <!-- 1 · title -->
+  <section class="slide" data-t="Hanap QCU">
+    <div class="inner split">
+      <div>
+        <div class="k">Project proposal · Quezon City University</div>
+        <h1><span style="white-space:nowrap">Lost it? Found it?</span><br><em>Hanap QCU.</em></h1>
+        <p class="lead">One web app that brings lost things back to their owners, takes the busy work off the Lost &amp; Found desk, and helps every student find any room, office or place on campus.</p>
+        <div class="chips" style="margin-top:24px"><span class="chip on">🔎 Lost &amp; Found</span><span class="chip on">🧭 Campus Finder</span><span class="chip">🤝 Built by the whole school</span><span class="chip">₱0 to run</span></div>
+        <p style="margin-top:28px;color:var(--t3);font-size:14px">Created by <b style="color:var(--t1)">Jorge W</b></p>
+      </div>
+      <div>
+        <div class="phone"><div class="scr">
+          <div class="ph-top"><div class="lg">QCU</div><div class="sr">⌕ Search items, rooms, offices…</div></div>
+          <div class="ph-map">
+            <div class="bld" style="left:12%;top:18%;width:34%;height:22%"></div><div class="bld" style="left:56%;top:12%;width:30%;height:30%"></div><div class="bld" style="left:20%;top:58%;width:52%;height:22%"></div>
+            <div class="pin" style="--i:0;left:24%;top:24%;background:var(--mint)"><span>☂️</span></div>
+            <div class="pin" style="--i:1;left:66%;top:22%;background:var(--rose)"><span>🎒</span></div>
+            <div class="pin" style="--i:2;left:44%;top:60%;background:var(--mint)"><span>🔑</span></div>
+            <div class="pin" style="--i:3;left:76%;top:58%;background:linear-gradient(135deg,var(--flame),var(--gold))"><span>📍</span></div>
+          </div>
+          <div class="ph-sheet"><div class="grab"></div>
+            <div class="stories"><div class="story"><i>✨</i>All</div><div class="story"><i>📱</i>Phones</div><div class="story"><i>🪪</i>IDs</div><div class="story"><i>🎒</i>Bags</div><div class="story"><i>☂️</i>Umbrella</div></div>
+            <div class="tiles">
+              <div class="tile"><div class="im">☂️<span class="bd">FOUND</span></div><div class="tx">Black umbrella<small>Library · 2F</small></div></div>
+              <div class="tile"><div class="im">🔑<span class="bd">FOUND</span></div><div class="tx">Car keys<small>Canteen</small></div></div>
+            </div>
+          </div>
+          <div class="ph-nav"><span>Map</span><span>Items</span><div class="rep">+</div><span>Campus</span><span>Help</span></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 · the problem -->
+  <section class="slide" data-t="The problem">
+    <div class="inner">
+      <div class="k">01 · The problem</div>
+      <h2>Three groups lose time <em>every single day.</em></h2>
+      <div class="grid g3">
+        <div class="card t" style="--c:var(--rose)"><div class="ic">😟</div><b>The one who lost something</b><p>Has to walk to the desk, describe the item from memory, and come back again and again to ask "is it here yet?" — often between classes.</p></div>
+        <div class="card t" style="--c:var(--gold)"><div class="ic">🗂️</div><b>The Lost &amp; Found desk</b><p>Answers the same questions all day, searches a logbook and a box by hand, and has no easy way to tell students what is already there.</p></div>
+        <div class="card t" style="--c:var(--sky)"><div class="ic">🧭</div><b>New students &amp; visitors</b><p>Don't know where the registrar, a faculty room or "Room 305" is — so they ask around, get lost, and arrive late.</p></div>
+      </div>
+      <p class="quote">Most lost items are never claimed — not because nobody found them, but because the owner never knew they were found.<small>Hanap QCU closes that gap.</small></p>
+    </div>
+  </section>
+
+  <!-- 3 · questions at the desk -->
+  <section class="slide" data-t="Questions at the desk">
+    <div class="inner split">
+      <div>
+        <div class="k">02 · A day at the desk</div>
+        <h2>The same questions, <em>all day long.</em></h2>
+        <p class="lead">Every one of these takes the staff away from real work — and every one of them can be answered by a screen.</p>
+      </div>
+      <div class="bubbles">
+        <span class="bubble" style="--i:0">"Did anyone turn in a black umbrella?"</span>
+        <span class="bubble" style="--i:1">"I lost my ID yesterday, is it here?"</span>
+        <span class="bubble" style="--i:2">"What time are you open?"</span>
+        <span class="bubble" style="--i:3">"Where exactly is the Lost &amp; Found desk?"</span>
+        <span class="bubble" style="--i:4">"Can I check again tomorrow?"</span>
+        <span class="bubble" style="--i:5">"I found this phone in Room 210 — what do I do?"</span>
+        <span class="bubble" style="--i:6">"Where is the registrar's office?"</span>
+        <span class="bubble" style="--i:7">"What do I bring to claim it?"</span>
+        <span class="bubble" style="--i:8">"Has my water bottle been found?"</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · the idea -->
+  <section class="slide" data-t="The idea">
+    <div class="inner">
+      <div class="k">03 · The idea</div>
+      <h2>One web app. <em>Two jobs.</em></h2>
+      <p class="lead">No install, no account needed to look — just open the link on any phone or computer.</p>
+      <div class="grid g2">
+        <div class="card t" style="--c:var(--mint)"><div class="ic">🔎</div><b>Lost &amp; Found, on a map</b><p>Every found item gets a photo, a reference code and a pin on the exact spot — building, floor and room. Search by color, brand or place. Students see what's there <i>before</i> walking to the desk.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--sky)"><div class="ic">🧭</div><b>Campus Finder</b><p>Type "registrar", "CR", "faculty room" or "room 305" and the map flies there — with the floor, the room number, office hours and walking directions.</p><span class="tag now">WORKING TODAY</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 · how it works -->
+  <section class="slide" data-t="How it works">
+    <div class="inner">
+      <div class="k">04 · How it works</div>
+      <h2>Three steps from <em>"I found this"</em> to <em>"it's back."</em></h2>
+      <div class="flow">
+        <div class="st"><div class="n"><em>01</em></div><b>Report in a minute</b><p>Pick "I found" or "I lost", describe it, add a photo, then drag the map to pin the exact spot — the building is detected for you. Add floor and room.</p></div>
+        <div class="st"><div class="n"><em>02</em></div><b>The desk checks it</b><p>The report becomes a QR code. Show it at the desk — staff scan it and it opens on their screen. Nothing to type, nothing to copy into a logbook.</p></div>
+        <div class="st"><div class="n"><em>03</em></div><b>Live on the map</b><p>One click and it's on the map with a reference code. The owner finds it, reads exactly what to bring, and claims it at the desk.</p></div>
+      </div>
+      <p class="lead" style="margin-top:22px;font-size:15px">Nothing goes public until the desk checks it — no spam, no fake posts.</p>
+    </div>
+  </section>
+
+  <!-- 6 · for the owner -->
+  <section class="slide" data-t="For the one who lost something">
+    <div class="inner split">
+      <div>
+        <div class="k">05 · For the one who lost something</div>
+        <h2>Check from your phone <em>— not from the line.</em></h2>
+        <div class="vs" style="grid-template-columns:1fr">
+          <div class="a"><small>WHAT THEY GET</small><ul>
+            <li>See every found item with a photo, where and when it was found</li>
+            <li>Tap a category bubble — phones, IDs, bags — new items glow</li>
+            <li>Search "blue tumbler" or "library" in one box</li>
+            <li>"Is it yours?" tells them exactly what to bring and the reference code to mention</li>
+            <li>Report a lost item so finders and the desk can look out for it</li>
+            <li>"My reports" keeps track of everything they sent</li>
+          </ul></div>
+        </div>
+      </div>
+      <div class="inbox">
+        <div class="hd">☂️ Black umbrella · <span style="background:var(--mint)">FOUND</span></div>
+        <div style="padding:16px;font-size:13.5px;line-height:1.55">
+          <div style="font:800 10px var(--mono);letter-spacing:.14em;color:#b87900">F-UM07 · UMBRELLA · BLACK</div>
+          <div style="margin:8px 0;display:flex;gap:8px">📍<div><b>Library Building · 2nd floor · Room 204</b><div style="color:#6b7690">Beside the water dispenser · Mon, Oct 13</div></div></div>
+          <div style="background:var(--ink);color:#fff;border-radius:12px;padding:12px;margin-top:10px">
+            <div style="font:800 10px var(--mono);letter-spacing:.16em;color:var(--gold)">IS IT YOURS?</div>
+            Go to the Lost &amp; Found desk, show your school ID and describe the item. Mention <b class="mono">F-UM07</b>.
+            <div style="margin-top:10px"><span style="background:linear-gradient(135deg,var(--flame),#f25f10);padding:6px 10px;border-radius:8px;font-weight:700;font-size:12px">🧭 Where is the desk?</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 · for the desk -->
+  <section class="slide" data-t="For the Lost & Found desk">
+    <div class="inner split">
+      <div class="inbox">
+        <div class="hd">📥 Desk inbox <span>3 NEW</span></div>
+        <div class="row" style="--i:0"><div class="e">📱</div><div><b>Found · iPhone, blue case</b><small>Room 210 · 2nd floor · 9:40 AM</small></div><span class="btn">Post</span></div>
+        <div class="row" style="--i:1"><div class="e">🪪</div><div><b>Lost · School ID</b><small>Canteen · yesterday · contact kept private</small></div><span class="btn">Post</span></div>
+        <div class="row" style="--i:2"><div class="e">🎒</div><div><b>Found · Gray backpack</b><small>Gym bleachers · 3:15 PM</small></div><span class="btn">Post</span></div>
+        <div class="row" style="--i:3"><div class="e">☂️</div><div><b>F-UM07 · Black umbrella</b><small>Claimed by owner</small></div><span class="btn g">Returned ✓</span></div>
+      </div>
+      <div>
+        <div class="k">06 · For the Lost &amp; Found desk</div>
+        <h2>Less asking. <em>Less writing.</em></h2>
+        <div class="vs" style="grid-template-columns:1fr 1fr">
+          <div class="b"><small>TODAY</small><ul><li>Logbook by hand</li><li>"Is it here?" — all day</li><li>Dig through the box</li><li>No record of returns</li></ul></div>
+          <div class="a"><small>WITH HANAP QCU</small><ul><li>Scan a QR — the report is typed for you</li><li>Students check the site first</li><li>Search by code, color or place</li><li>Status: open → claimed → returned</li></ul></div>
+        </div>
+        <p class="lead" style="font-size:15px;margin-top:14px">Desk hours, location and claim rules are on every item — the most common questions answer themselves.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 · campus finder -->
+  <section class="slide" data-t="Campus Finder">
+    <div class="inner">
+      <div class="k">07 · Campus Finder</div>
+      <h2>"Where is…?" <em>Answered in one tap.</em></h2>
+      <p class="lead">The same map that shows lost items also knows every building, office and room — down to the floor.</p>
+      <div class="grid g4">
+        <div class="card"><div class="ic">🏛️</div><b>Offices</b><p>Registrar, cashier, guidance, clinic — with hours and room number.</p></div>
+        <div class="card"><div class="ic">🚪</div><b>Rooms &amp; floors</b><p>"Room 305" flies to the building and floor. Floor buttons filter the map.</p></div>
+        <div class="card"><div class="ic">🏢</div><b>Buildings</b><p>Tap any building to see every place and found item inside it.</p></div>
+        <div class="card"><div class="ic">🚶</div><b>Directions</b><p>One tap opens walking directions to the exact spot.</p></div>
+      </div>
+      <div class="chips"><span class="chip">registrar</span><span class="chip">faculty room</span><span class="chip">CR</span><span class="chip">room 305</span><span class="chip">library</span><span class="chip">clinic</span><span class="chip">canteen</span><span class="chip">gym</span></div>
+    </div>
+  </section>
+
+  <!-- 9 · community map -->
+  <section class="slide" data-t="A map built by everyone">
+    <div class="inner">
+      <div class="k">08 · A map built by everyone</div>
+      <h2>The admin doesn't map the school. <em>The school maps itself.</em></h2>
+      <p class="lead">Any student or teacher can add a place they know — a faculty room, a hidden CR, a new office. The desk or a student moderator approves it with one click. The map grows and stays correct, without one person doing all the work.</p>
+      <div class="loop">
+        <div class="st"><div class="ic">📍</div><b>Anyone adds</b><p>Drop a pin, give it a name, floor and room — even a photo of the door sign.</p></div>
+        <div class="st"><div class="ic">✅</div><b>Quick review</b><p>A moderator approves, edits or rejects — like the lost &amp; found reports today.</p></div>
+        <div class="st"><div class="ic">🗺️</div><b>Live for everyone</b><p>It appears on the map and in search, marked as "added by the community".</p></div>
+        <div class="st"><div class="ic">🔁</div><b>Kept fresh</b><p>"Still correct?" — users flag moved offices, so the map fixes itself.</p></div>
+      </div>
+      <div class="chips" style="margin-top:18px"><span class="chip on">Admin adds places — WORKING TODAY</span><span class="chip">Anyone suggests, moderator approves — NEXT STEP</span></div>
+    </div>
+  </section>
+
+  <!-- 10 · phones -->
+  <section class="slide" data-t="Made for phones">
+    <div class="inner split">
+      <div>
+        <div class="k">09 · Made for students' phones</div>
+        <h2>Works on any phone. <em>Even on slow data.</em></h2>
+        <div class="grid g2" style="margin-top:18px">
+          <div class="card"><div class="ic">📲</div><b>No app to install</b><p>Just a link or a QR poster on the wall.</p></div>
+          <div class="card"><div class="ic">🗺️</div><b>Map + list together</b><p>Map on top, items below — swipe up for more.</p></div>
+          <div class="card"><div class="ic">🪶</div><b>Data saver</b><p>"Blueprint" view draws the campus with almost no data.</p></div>
+          <div class="card"><div class="ic">📴</div><b>Works offline</b><p>The last list stays on the phone when the signal drops.</p></div>
+        </div>
+      </div>
+      <div class="phone"><div class="scr">
+        <div class="ph-top"><div class="lg">QCU</div><div class="sr">⌕ room 305</div></div>
+        <div class="ph-map" style="background:#0d1a30;background-image:linear-gradient(rgba(255,194,74,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,194,74,.08) 1px,transparent 1px);background-size:18px 18px">
+          <div class="bld" style="left:14%;top:20%;width:36%;height:26%"></div><div class="bld" style="left:58%;top:16%;width:28%;height:34%"></div><div class="bld" style="left:22%;top:60%;width:50%;height:20%"></div>
+          <div class="pin" style="--i:0;left:66%;top:26%;background:linear-gradient(135deg,var(--flame),var(--gold))"><span>🚪</span></div>
+        </div>
+        <div class="ph-sheet"><div class="grab"></div>
+          <div style="font:800 9px var(--mono);letter-spacing:.14em;color:#b87900">CLASSROOM</div>
+          <div style="font-size:15px;font-weight:800">Room 305</div>
+          <div style="color:#6b7690">Academic Building · 3rd floor</div>
+          <div style="display:grid;grid-template-columns:auto 1fr;gap:3px 10px;margin-top:6px"><b>Building</b><span>Academic</span><b>Floor</b><span>3rd floor</span><b>Near</b><span>Stairs B, left side</span></div>
+          <div style="margin-top:8px;display:inline-block;background:linear-gradient(135deg,var(--flame),#f25f10);color:#fff;padding:6px 10px;border-radius:8px;font-weight:700;width:max-content">🚶 Walking directions</div>
+        </div>
+        <div class="ph-nav"><span>Map</span><span>Items</span><div class="rep">+</div><span style="color:#0a1426;font-weight:700">Campus</span><span>Help</span></div>
+      </div></div>
+    </div>
+  </section>
+
+  <!-- 11 · privacy -->
+  <section class="slide" data-t="Safe by design">
+    <div class="inner">
+      <div class="k">10 · Safe by design</div>
+      <h2>Helpful to everyone. <em>Useful to no thief.</em></h2>
+      <div class="grid g3">
+        <div class="card t" style="--c:var(--mint)"><div class="ic">🔒</div><b>Contacts stay private</b><p>Names and phone numbers go only to the desk — never shown on the site.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--mint)"><div class="ic">🛂</div><b>Claim in person</b><p>Items are claimed at the desk with a school ID and a description — the site never hands anything over.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--mint)"><div class="ic">👀</div><b>Checked before public</b><p>Every report is reviewed by the desk before it goes live.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--mint)"><div class="ic">🪪</div><b>No card numbers</b><p>The form reminds people never to post ID or card numbers — just marks and colors.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--mint)"><div class="ic">🔑</div><b>Only the desk can publish</b><p>Publishing needs the desk's own key — students can only send reports.</p><span class="tag now">WORKING TODAY</span></div>
+        <div class="card t" style="--c:var(--gold)"><div class="ic">🎓</div><b>School sign-in</b><p>Optional: sign in with the QCU account to add places and reduce fake reports.</p><span class="tag next">NEXT STEP</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 · cost -->
+  <section class="slide" data-t="Costs nothing to run">
+    <div class="inner split">
+      <div>
+        <div class="k">11 · Costs nothing to run</div>
+        <h2>₱0 a month. <em>No server to maintain.</em></h2>
+        <p class="lead">Hanap QCU runs on free, reliable services the school doesn't have to manage.</p>
+      </div>
+      <div class="grid" style="margin:0">
+        <div class="metric"><div class="big"><em>₱0</em></div><b>Hosting</b><p>Free website hosting on GitHub Pages — fast everywhere.</p></div>
+        <div class="grid g2" style="margin:0">
+          <div class="metric"><b>🗺️ Maps</b><p>Free satellite, street and OpenStreetMap campus outline.</p></div>
+          <div class="metric"><b>🖼️ Photos</b><p>Stored as links and resized on the fly — about 30 KB per photo on a phone.</p></div>
+          <div class="metric"><b>📦 Data</b><p>One small file with every item and place, cached on the phone.</p></div>
+          <div class="metric"><b>🧰 Upkeep</b><p>The desk updates everything from one admin page.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 · impact -->
+  <section class="slide" data-t="Impact we will measure">
+    <div class="inner">
+      <div class="k">12 · Impact</div>
+      <h2>What success <em>looks like.</em></h2>
+      <p class="lead">Targets for a one-semester pilot — measured from the desk's own records, not guesses.</p>
+      <div class="grid g4">
+        <div class="metric"><div class="big"><em>↑</em></div><b>More items returned</b><p>Share of found items that get back to their owners.</p></div>
+        <div class="metric"><div class="big"><em>↓</em></div><b>Fewer desk questions</b><p>"Is my item here?" visits and calls per day.</p></div>
+        <div class="metric"><div class="big"><em>⏱</em></div><b>Faster returns</b><p>Days from "found" to "back with the owner".</p></div>
+        <div class="metric"><div class="big"><em>🧭</em></div><b>Easier first week</b><p>Freshmen who found their rooms using the map.</p></div>
+      </div>
+      <p class="quote" style="font-size:18px">Bonus: the map shows <b>where</b> things get lost most — so the school knows where to put signs, lockers or reminders.</p>
+    </div>
+  </section>
+
+  <!-- 14 · more uses -->
+  <section class="slide" data-t="More ways it can help">
+    <div class="inner">
+      <div class="k">13 · Beyond lost &amp; found</div>
+      <h2>One campus map. <em>Many ways to help.</em></h2>
+      <div class="uses">
+        <div class="use"><div class="ic">🎓</div><b>Freshman orientation</b><p>A self-guided campus tour on enrollment day.</p></div>
+        <div class="use"><div class="ic">📝</div><b>Exam room finder</b><p>"Where is my exam?" — rooms and seat plans on the map.</p></div>
+        <div class="use"><div class="ic">🛠️</div><b>Report a broken facility</b><p>Pin a leak, broken light or chair — maintenance sees exactly where.</p></div>
+        <div class="use"><div class="ic">♿</div><b>Accessibility routes</b><p>Ramps, elevators and accessible CRs marked on the map.</p></div>
+        <div class="use"><div class="ic">🚨</div><b>Emergency map</b><p>Exits, evacuation areas, fire extinguishers and the clinic.</p></div>
+        <div class="use"><div class="ic">📅</div><b>Events on the map</b><p>Org fairs, seminars and booths — what's happening where, today.</p></div>
+        <div class="use"><div class="ic">🕘</div><b>Office hours directory</b><p>Who is in which faculty room, and when they're available.</p></div>
+        <div class="use"><div class="ic">🏫</div><b>Vacant rooms</b><p>Find a free room to study or meet between classes.</p></div>
+        <div class="use"><div class="ic">🍱</div><b>Food &amp; essentials</b><p>Canteen, water stations, printing and photocopy shops.</p></div>
+        <div class="use"><div class="ic">👪</div><b>Visitors &amp; parents</b><p>Graduation and open-house guide without asking the guard.</p></div>
+        <div class="use"><div class="ic">📊</div><b>Insights for the school</b><p>Lost-item hotspots and busiest offices, to plan better.</p></div>
+        <div class="use"><div class="ic">♻️</div><b>Donate unclaimed items</b><p>Track items past 60 days for donation drives — nothing goes to waste.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 · roadmap -->
+  <section class="slide" data-t="Roadmap">
+    <div class="inner">
+      <div class="k">14 · Roadmap</div>
+      <h2>Built in steps. <em>Useful from day one.</em></h2>
+      <div class="road">
+        <div class="phase" style="--c:var(--mint)"><div class="k2">PHASE 1 · WORKING TODAY</div><b>Lost &amp; Found + map</b><ul>
+          <li>Feed, search and categories</li><li>3-step report with map pin, floor, room</li><li>QR hand-off to the desk inbox</li><li>Campus places, buildings, floors</li><li>Phone layout, data saver, offline</li></ul></div>
+        <div class="phase" style="--c:var(--flame)"><div class="k2">PHASE 2 · NEXT</div><b>Community map</b><ul>
+          <li>Anyone suggests places</li><li>Moderator approval queue</li><li>"Still correct?" flags</li><li>Contributor credit badges</li></ul></div>
+        <div class="phase" style="--c:var(--gold)"><div class="k2">PHASE 3</div><b>Campus services</b><ul>
+          <li>Facility issue reports</li><li>Events and exam rooms on the map</li><li>Accessibility &amp; emergency layers</li></ul></div>
+        <div class="phase" style="--c:var(--sky)"><div class="k2">PHASE 4</div><b>School-wide</b><ul>
+          <li>QCU sign-in</li><li>Email / SMS when a matching item is found</li><li>Dashboards for the administration</li></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 · pilot / ask -->
+  <section class="slide" data-t="The pilot">
+    <div class="inner split">
+      <div>
+        <div class="k">15 · The ask</div>
+        <h2>Let's try it for <em>one semester.</em></h2>
+        <p class="lead">A small pilot with the Lost &amp; Found desk is all it takes to prove it.</p>
+        <div class="vs" style="grid-template-columns:1fr">
+          <div class="a"><small>WHAT WE NEED</small><ul>
+            <li>The Lost &amp; Found desk as the first moderator</li>
+            <li>QR posters near the desk, library, canteen and each building</li>
+            <li>A few student volunteers to add rooms and offices</li>
+            <li>An announcement on the school's page</li>
+          </ul></div>
+        </div>
+      </div>
+      <div style="text-align:center">
+        <div class="big"><em>Hanap QCU</em></div>
+        <p class="lead" style="margin:16px auto 0;text-align:center">Lost something? Found something?<br>Find it — and find your way — around campus.</p>
+        <p style="margin-top:30px;color:var(--t3)">Thank you · Created by <b style="color:var(--t1)">Jorge W</b></p>
+        <p style="margin-top:8px"><a href="index.html" style="color:var(--gold);text-decoration:none;font-weight:700">▶ Open the live app</a> &nbsp;·&nbsp; <a href="index.html?demo" style="color:var(--gold);text-decoration:none;font-weight:700">See it with sample data</a></p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<div class="bar">
+  <div class="brand"><div class="lg">QCU</div><span><b>Hanap QCU</b> · Proposal · Created by Jorge W</span></div>
+  <div class="sp"></div>
+  <button class="nb" id="bPrev" title="Previous (←)">‹</button><span class="count" id="count"></span><button class="nb" id="bNext" title="Next (→)">›</button>
+  <button class="nb" id="bOv" title="Overview (O)">▦</button><button class="nb" id="bFs" title="Full screen (F)">⛶</button>
+</div>
+<div class="ov" id="ov"><h3>ALL SLIDES · CLICK TO JUMP</h3><div class="ovg" id="ovg"></div></div>
+
+<script>
+'use strict';
+const slides = [...document.querySelectorAll('.slide')];
+let cur = Math.max(0, Math.min(slides.length - 1, (parseInt(location.hash.slice(1), 10) || 1) - 1));
+function show(n) {
+  cur = Math.max(0, Math.min(slides.length - 1, n));
+  slides.forEach((s, i) => { s.classList.toggle('on', i === cur); s.classList.toggle('past', i < cur); });
+  document.getElementById('count').textContent = `${cur + 1} / ${slides.length}`;
+  document.getElementById('prog').style.width = `${(100 * (cur + 1)) / slides.length}%`;
+  history.replaceState(null, '', '#' + (cur + 1));
+  document.querySelectorAll('#ovg button').forEach((b, i) => b.classList.toggle('cur', i === cur));
+}
+document.getElementById('ovg').innerHTML = slides.map((s, i) => `<button data-i="${i}"><small>${String(i + 1).padStart(2, '0')}</small><b>${s.dataset.t}</b></button>`).join('');
+document.getElementById('ovg').onclick = (e) => { const b = e.target.closest('button'); if (b) { show(+b.dataset.i); toggleOv(false); } };
+const toggleOv = (on) => document.getElementById('ov').classList.toggle('on', on ?? !document.getElementById('ov').classList.contains('on'));
+const fs = () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {});
+document.getElementById('bPrev').onclick = () => show(cur - 1);
+document.getElementById('bNext').onclick = () => show(cur + 1);
+document.getElementById('bOv').onclick = () => toggleOv();
+document.getElementById('bFs').onclick = fs;
+document.addEventListener('keydown', (e) => {
+  if (['ArrowRight', 'PageDown', ' ', 'Enter'].includes(e.key)) { e.preventDefault(); show(cur + 1); }
+  if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); show(cur - 1); }
+  if (e.key === 'Home') show(0);
+  if (e.key === 'End') show(slides.length - 1);
+  if (e.key.toLowerCase() === 'o') toggleOv();
+  if (e.key.toLowerCase() === 'f') fs();
+  if (e.key === 'Escape') toggleOv(false);
+});
+let tx = null;
+document.addEventListener('touchstart', (e) => { tx = e.touches[0].clientX; }, { passive: true });
+document.addEventListener('touchend', (e) => { if (tx == null) return; const d = e.changedTouches[0].clientX - tx; if (Math.abs(d) > 60) show(cur + (d < 0 ? 1 : -1)); tx = null; });
+show(cur);
+</script>
+</body>
+</html>
